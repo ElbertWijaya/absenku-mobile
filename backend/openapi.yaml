@@ -1,0 +1,518 @@
+openapi: 3.0.3
+info:
+  title: Absensi API
+  version: 0.2.0
+  description: >
+    API untuk aplikasi absensi dengan QR (NestJS + MariaDB).
+    Pembaruan: multi-lokasi dari awal, shift tetap per karyawan, payroll harian.
+servers:
+  - url: http://localhost:3000
+    description: Local
+tags:
+  - name: Auth
+  - name: Me
+  - name: QR
+  - name: Attendance
+  - name: Employees
+  - name: Shifts
+  - name: Schedules
+  - name: Reports
+  - name: Payroll
+  - name: Health
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string }
+        error: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+    LoginResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        user:
+          $ref: '#/components/schemas/User'
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        employee:
+          $ref: '#/components/schemas/Employee'
+        roles:
+          type: array
+          items: { type: string }
+    Employee:
+      type: object
+      properties:
+        id: { type: integer }
+        full_name: { type: string }
+        role_title: { type: string, nullable: true }
+        gender: { type: string, enum: [M, F], nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        join_date: { type: string, format: date, nullable: true }
+        is_active: { type: boolean }
+        default_location_id: { type: integer, nullable: true }
+        default_shift_id: { type: integer, nullable: true }
+        base_salary_rate: { type: number, nullable: true }
+    Shift:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        start_time: { type: string, example: '08:00:00' }
+        end_time: { type: string, example: '16:00:00' }
+        grace_minutes: { type: integer }
+        min_check_out_after_minutes: { type: integer }
+    Schedule:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        shift_id: { type: integer }
+        location_id: { type: integer, nullable: true }
+        work_date: { type: string, format: date }
+        status: { type: string, enum: [planned, completed, absent] }
+    QRActiveResponse:
+      type: object
+      properties:
+        token: { type: string, description: 'JWT QR, HS256' }
+        expires_at: { type: string, format: date-time }
+        shift_id: { type: integer }
+        location_id: { type: integer }
+    CheckInRequest:
+      type: object
+      required: [qr_token]
+      properties:
+        qr_token: { type: string }
+        lat: { type: number, format: double, nullable: true, description: 'Wajib jika ATTENDANCE_REQUIRE_GEOFENCE=true' }
+        lng: { type: number, format: double, nullable: true, description: 'Wajib jika ATTENDANCE_REQUIRE_GEOFENCE=true' }
+    CheckInResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [on_time, late] }
+        work_date: { type: string, format: date }
+        shift_id: { type: integer }
+        location_id: { type: integer }
+        message: { type: string }
+    CheckOutRequest:
+      type: object
+      properties:
+        lat: { type: number, format: double, nullable: true }
+        lng: { type: number, format: double, nullable: true }
+    AttendanceLog:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: integer }
+        work_date: { type: string, format: date }
+        shift_id: { type: integer }
+        location_id: { type: integer }
+        check_in_at: { type: string, format: date-time }
+        check_out_at: { type: string, format: date-time, nullable: true }
+        late_minutes: { type: integer, nullable: true }
+        work_minutes: { type: integer, nullable: true }
+        status: { type: string, enum: [on_time, late, absent_partial], nullable: true }
+    EmployeeDefaultsRequest:
+      type: object
+      required: [default_location_id, default_shift_id]
+      properties:
+        default_location_id: { type: integer }
+        default_shift_id: { type: integer }
+    ReportAttendanceItem:
+      type: object
+      properties:
+        employee_id: { type: integer }
+        full_name: { type: string }
+        date: { type: string, format: date }
+        shift: { type: string }
+        location: { type: string }
+        status: { type: string }
+        late_minutes: { type: integer }
+        work_minutes: { type: integer }
+    PayrollRun:
+      type: object
+      properties:
+        id: { type: integer }
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date }
+        status: { type: string, enum: [draft, finalized] }
+    PayrollItem:
+      type: object
+      properties:
+        employee_id: { type: integer }
+        base_pay: { type: number }
+        late_deduction: { type: number }
+        overtime_pay: { type: number }
+        allowances: { type: number }
+        total_pay: { type: number }
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200': { description: OK }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: Logout (revoke refresh)
+      responses:
+        '204': { description: No Content }
+
+  /me:
+    get:
+      tags: [Me]
+      security: [{ bearerAuth: [] }]
+      summary: Profile saat ini
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /qr/active:
+    get:
+      tags: [QR]
+      security: [{ bearerAuth: [] }]
+      summary: Ambil QR token aktif (admin display)
+      description: >
+        Mengembalikan QR JWT untuk location_id + shift_id. Token dirotasi
+        berkala sesuai konfigurasi.
+      parameters:
+        - in: query
+          name: location_id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: shift_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QRActiveResponse' }
+
+  /qr/issue:
+    post:
+      tags: [QR]
+      security: [{ bearerAuth: [] }]
+      summary: Generate QR token (manual)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [location_id, shift_id]
+              properties:
+                location_id: { type: integer }
+                shift_id: { type: integer }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QRActiveResponse' }
+
+  /attendance/check-in:
+    post:
+      tags: [Attendance]
+      security: [{ bearerAuth: [] }]
+      summary: Check-in dengan QR
+      description: >
+        Server memvalidasi token QR (location_id, shift_id), jadwal/shift karyawan,
+        anti-replay, window waktu, dan geofencing jika diaktifkan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckInRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckInResponse' }
+        '400':
+          description: Invalid/expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  /attendance/check-out:
+    post:
+      tags: [Attendance]
+      security: [{ bearerAuth: [] }]
+      summary: Check-out (opsional)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckOutRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceLog' }
+
+  /attendance/my:
+    get:
+      tags: [Attendance]
+      security: [{ bearerAuth: [] }]
+      summary: Riwayat absensi saya
+      parameters:
+        - in: query
+          name: start
+          schema: { type: string, format: date }
+        - in: query
+          name: end
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AttendanceLog' }
+
+  /employees:
+    get:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      summary: List karyawan
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      summary: Buat karyawan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Employee' }
+      responses:
+        '201': { description: Created }
+
+  /employees/{id}:
+    get:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+    patch:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      summary: Update karyawan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+    delete:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      summary: Hapus karyawan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: No Content }
+
+  /employees/{id}/defaults:
+    patch:
+      tags: [Employees]
+      security: [{ bearerAuth: [] }]
+      summary: Set default lokasi dan shift karyawan (shift tetap)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeDefaultsRequest' }
+      responses:
+        '200': { description: OK }
+
+  /shifts:
+    get:
+      tags: [Shifts]
+      security: [{ bearerAuth: [] }]
+      summary: List shift
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Shifts]
+      security: [{ bearerAuth: [] }]
+      summary: Buat shift
+      responses:
+        '201': { description: Created }
+
+  /schedules:
+    get:
+      tags: [Schedules]
+      security: [{ bearerAuth: [] }]
+      summary: List jadwal (filterable)
+      parameters:
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+        - in: query
+          name: employee_id
+          schema: { type: integer }
+        - in: query
+          name: location_id
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Schedules]
+      security: [{ bearerAuth: [] }]
+      summary: Buat jadwal
+      responses:
+        '201': { description: Created }
+
+  /reports/attendance:
+    get:
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      summary: Rekap absensi
+      parameters:
+        - in: query
+          name: start
+          schema: { type: string, format: date }
+        - in: query
+          name: end
+          schema: { type: string, format: date }
+        - in: query
+          name: location_id
+          schema: { type: integer }
+        - in: query
+          name: employee_id
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReportAttendanceItem' }
+
+  /payroll/runs:
+    post:
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      summary: Generate payroll untuk periode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period_start, period_end]
+              properties:
+                period_start: { type: string, format: date }
+                period_end: { type: string, format: date }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PayrollRun' }
+    get:
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      summary: List payroll runs
+      responses:
+        '200': { description: OK }
+
+  /payroll/runs/{id}/items:
+    get:
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      summary: Rincian payroll run
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }

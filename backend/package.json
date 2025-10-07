@@ -1,0 +1,53 @@
+{
+  "name": "absenku-backend",
+  "version": "0.1.0",
+  "description": "Backend Absensi - NestJS + TypeORM + MariaDB",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint \"{src,tests}/**/*.ts\" --fix",
+    "migration:run": "typeorm migration:run -d src/database/data-source.ts",
+    "migration:revert": "typeorm migration:revert -d src/database/data-source.ts",
+    "migration:create": "typeorm migration:create src/database/migrations/new_migration",
+    "migration:generate": "typeorm migration:generate src/database/migrations/auto -d src/database/data-source.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.7",
+    "@nestjs/core": "^10.4.7",
+    "@nestjs/platform-express": "^10.4.7",
+    "@nestjs/config": "^3.2.3",
+    "@nestjs/swagger": "^7.4.2",
+    "swagger-ui-express": "^5.0.1",
+    "@nestjs/typeorm": "^10.0.2",
+    "typeorm": "^0.3.20",
+    "mysql2": "^3.11.3",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "bcrypt": "^5.1.1",
+    "helmet": "^7.1.0",
+    "@nestjs/throttler": "^6.2.1",
+    "zod": "^3.23.8",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.5",
+    "@nestjs/schematics": "^10.1.3",
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.16.11",
+    "eslint": "^9.12.0",
+    "prettier": "^3.3.3",
+    "rimraf": "^5.0.10",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.3"
+  }
+}
