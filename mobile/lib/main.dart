@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'core/dio_client.dart';
+import 'features/auth/presentation/login_screen.dart';
+import 'features/home/presentation/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await DioClient().init();
   runApp(const AbsenkuApp());
 }
 
@@ -12,9 +17,11 @@ class AbsenkuApp extends StatelessWidget {
     return MaterialApp(
       title: 'Absenku',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
-      home: const Scaffold(
-        body: Center(child: Text('Absenku Mobile - fresh start')),
-      ),
+      initialRoute: '/login',
+      routes: {
+        '/login': (_) => const LoginScreen(),
+        '/home': (_) => const HomeScreen(),
+      },
     );
   }
 }
