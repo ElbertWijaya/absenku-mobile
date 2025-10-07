@@ -4,9 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { Role } from './entities/role.entity';
-import { User } from './entities/user.entity';
-import { Employee } from './entities/employee.entity';
+import { QrModule } from './modules/qr/qr.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 
 @Module({
   imports: [
@@ -22,13 +21,14 @@ import { Employee } from './entities/employee.entity';
         database: cfg.get<string>('DB_NAME', 'absensi_db'),
         synchronize: false,
         autoLoadEntities: true,
-        entities: [Role, User, Employee],
         timezone: 'Z',
       }),
     }),
     HealthModule,
     UsersModule,
     AuthModule,
+    QrModule,
+    AttendanceModule,
   ],
 })
 export class AppModule {}
