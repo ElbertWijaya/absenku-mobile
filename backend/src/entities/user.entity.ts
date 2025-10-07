@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -39,7 +40,10 @@ export class User {
   updated_at: Date | null;
 
   @ManyToMany(() => Role, (role) => role.users)
-  // user_roles join table mapping
-  // name and columns must match DB: user_roles(user_id, role_id)
+  @JoinTable({
+    name: 'user_roles',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+  })
   roles: Role[];
 }
