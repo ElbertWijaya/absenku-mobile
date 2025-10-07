@@ -30,7 +30,6 @@ export class AuthService {
     await this.usersService.updateLastLogin(user.id);
     return {
       access_token,
-      // refresh_token bisa ditambahkan nanti (rotating refresh)
       user: this.usersService.toSafeUser(user),
     };
   }
