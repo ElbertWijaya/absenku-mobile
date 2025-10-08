@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'core/dio_client.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/qr/presentation/qr_generator_screen.dart';
+import 'features/attendance/presentation/qr_scan_checkin_screen.dart';
+import 'features/attendance/presentation/my_attendance_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +24,9 @@ class AbsenkuApp extends StatelessWidget {
       routes: {
         '/login': (_) => const LoginScreen(),
         '/home': (_) => const HomeScreen(),
+        '/qr-generate': (_) => const QrGeneratorScreen(),
+        '/scan-checkin': (_) => const QrScanCheckInScreen(),
+        '/my-attendance': (_) => const MyAttendanceScreen(),
       },
     );
   }

@@ -24,8 +24,44 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text('Login berhasil. Menu Scan & Riwayat akan ditambahkan.'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/qr-generate'),
+                    icon: const Icon(Icons.qr_code_2),
+                    label: const Text('Generate QR (Admin Display)'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/scan-checkin'),
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Scan QR untuk Check-In'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/my-attendance'),
+                    icon: const Icon(Icons.list_alt),
+                    label: const Text('Riwayat Absensi Saya'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
