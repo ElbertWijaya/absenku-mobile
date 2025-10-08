@@ -13,7 +13,8 @@
     "migration:run": "typeorm migration:run -d src/database/data-source.ts",
     "migration:revert": "typeorm migration:revert -d src/database/data-source.ts",
     "migration:create": "typeorm migration:create src/database/migrations/new_migration",
-    "migration:generate": "typeorm migration:generate src/database/migrations/auto -d src/database/data-source.ts"
+    "migration:generate": "typeorm migration:generate src/database/migrations/auto -d src/database/data-source.ts",
+    "seed:admin": "ts-node src/seed-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.7",
