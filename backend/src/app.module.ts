@@ -9,6 +9,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 import { Employee } from './entities/employee.entity';
+import { AttendanceLog } from './entities/attendance-log.entity';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { Employee } from './entities/employee.entity';
         database: cfg.get<string>('DB_NAME', 'absensi_db'),
         synchronize: false,
         autoLoadEntities: true,
-        entities: [Role, User, Employee],
+  entities: [Role, User, Employee, AttendanceLog],
         timezone: 'Z',
       }),
     }),

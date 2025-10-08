@@ -14,7 +14,8 @@
     "migration:revert": "typeorm migration:revert -d src/database/data-source.ts",
     "migration:create": "typeorm migration:create src/database/migrations/new_migration",
     "migration:generate": "typeorm migration:generate src/database/migrations/auto -d src/database/data-source.ts",
-    "seed:admin": "ts-node src/seed-admin.ts"
+    "seed:admin": "ts-node --transpile-only -r reflect-metadata src/seed-admin.ts",
+    "seed:users": "ts-node --transpile-only -r reflect-metadata src/seed-users.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.7",
@@ -37,6 +38,7 @@
     "passport-jwt": "^4.0.1",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20",
+    "reflect-metadata": "^0.2.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

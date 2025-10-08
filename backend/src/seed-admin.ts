@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
 import AppDataSource from './database/data-source';

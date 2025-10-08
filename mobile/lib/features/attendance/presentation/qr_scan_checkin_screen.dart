@@ -27,6 +27,12 @@ class _QrScanCheckInScreenState extends State<QrScanCheckInScreen> {
     try {
       final data = await repo.checkIn(qrToken: code);
       setState(() => _result = 'Sukses check-in: ${data['status']}');
+      if (mounted) {
+        // Tampilkan info singkat lalu kembali ke Home
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (!mounted) return;
+        Navigator.of(context).pop(); // kembali ke halaman sebelumnya (Home)
+      }
     } catch (e) {
       setState(() => _result = 'Gagal check-in: $e');
     } finally {

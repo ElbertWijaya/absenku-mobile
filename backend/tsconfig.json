@@ -12,6 +12,10 @@
     "baseUrl": "./",
     "incremental": true,
     "strictNullChecks": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": [
+      "node",
+      "reflect-metadata"
+    ]
   }
 }
