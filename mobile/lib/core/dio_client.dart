@@ -12,11 +12,23 @@ class DioClient {
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 20),
     headers: {'Content-Type': 'application/json'},
+    // Optional: anggap 4xx/5xx sebagai error (default sudah begitu)
   ));
 
   final _storage = const FlutterSecureStorage();
 
   Future<void> init() async {
+    // Log request/response untuk debug 401
+    dio.interceptors.add(LogInterceptor(
+      request: true,
+      requestBody: true,
+      responseBody: true,
+      responseHeader: false,
+      error: true,
+      requestHeader: false,
+      logPrint: (obj) => print('[DIO] $obj'),
+    ));
+
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'access_token');
@@ -26,6 +38,10 @@ class DioClient {
         handler.next(options);
       },
     ));
+
+    // Info untuk memastikan base URL benar
+    // ignore: avoid_print
+    print('DEBUG API_BASE_URL: $apiBaseUrl');
   }
 
   Future<void> saveToken(String token) async {
