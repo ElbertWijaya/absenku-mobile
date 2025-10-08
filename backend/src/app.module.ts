@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { QrModule } from './modules/qr/qr.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 import { Employee } from './entities/employee.entity';
@@ -28,6 +30,8 @@ import { Employee } from './entities/employee.entity';
     }),
     HealthModule,
     UsersModule,
+  QrModule,
+  AttendanceModule,
     AuthModule,
   ],
 })
