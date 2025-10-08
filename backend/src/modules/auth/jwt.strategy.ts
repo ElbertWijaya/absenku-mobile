@@ -18,16 +18,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Sesuaikan method pencarian user Anda; misalnya findById(payload.sub)
-    const user = await (this.users as any).findById?.(payload.sub)
-      ?? (this.users as any).findOneById?.(payload.sub)
-      ?? null;
+    const user =
+      (await this.users.findById?.(payload.sub)) ??
+      (await (this.users as any).findOneById?.(payload.sub)) ??
+      null;
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
+    if (!user) throw new UnauthorizedException('User not found');
 
-    // Kembalikan objek user (atau versi aman). Passport akan menaruh ini di req.user
-    return (this.users as any).toSafeUser?.(user) ?? user;
+    return this.users.toSafeUser(user);
   }
 }

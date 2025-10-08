@@ -1,36 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../entities/user.entity';
+import * as bcrypt from 'bcryptjs';
+// import repository/entity sesuai struktur Anda
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User) private readonly usersRepo: Repository<User>,
-  ) {}
+  // inject repository via constructor
 
-  findByEmail(email: string) {
-    return this.usersRepo.findOne({
-      where: { email },
-      relations: ['roles', 'employee'],
-    });
+  async findByEmail(email: string) {
+    // ganti sesuai ORM Anda (TypeORM/Prisma)
+    // contoh TypeORM: return this.repo.findOne({ where: { email } });
+    return null as any; // TODO: implement
   }
 
-  findById(id: string) {
-    return this.usersRepo.findOne({
-      where: { id },
-      relations: ['roles', 'employee'],
-    });
+  async findById(id: number | string) {
+    // TODO: implement
+    return null as any;
   }
 
-  async updateLastLogin(userId: string) {
-    await this.usersRepo.update(userId, { last_login_at: new Date() });
-  }
-
-  toSafeUser(user: User) {
+  async validateUser(email: string, password: string) {
+    const user = await this.findByEmail(email);
     if (!user) return null;
-    // omit password_hash in responses
-    const { password_hash, ...rest } = user as any;
+    // sesuaikan nama kolom hash di DB, mis. user.password atau user.passwordHash
+    const ok = await bcrypt.compare(password, user.password ?? user.passwordHash);
+    if (!ok) return null;
+    return user;
+  }
+
+  toSafeUser(user: any) {
+    const { password, passwordHash, ...rest } = user;
     return rest;
   }
 }
