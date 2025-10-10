@@ -15,8 +15,26 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
   bool _loading = false;
   String? _error;
 
-  String _fmtDateTimeLocal(dynamic value) {
-    if (value == null) return '-';
+  // removed _fmtDateTimeLocal (unused)
+
+  String _fmtDateLocal(String? ymd) {
+    if (ymd == null || ymd.isEmpty) return '-';
+    try {
+      // Parse "YYYY-MM-DD" sebagai lokal (tanpa zona waktu)
+      final parts = ymd.split('-');
+      if (parts.length != 3) return ymd;
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      final dt = DateTime(year, month, day);
+      return DateFormat('dd MMM yyyy', 'id_ID').format(dt);
+    } catch (_) {
+      return ymd;
+    }
+  }
+
+  String _fmtTimeLocal(dynamic value) {
+    if (value == null) return '';
     try {
       DateTime dt;
       if (value is DateTime) {
@@ -27,17 +45,15 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
         return value.toString();
       }
       final local = dt.toLocal();
-  return DateFormat('yyyy-MM-dd HH:mm:ss', 'id_ID').format(local);
+      return DateFormat('HH:mm:ss', 'id_ID').format(local);
     } catch (_) {
-      final s = value.toString();
-      var cleaned = s.replaceFirst('T', ' ').replaceFirst('Z', '');
-      // Remove fractional seconds like .000
-      final dot = cleaned.indexOf('.');
-      if (dot != -1) {
-        // keep only up to seconds
-        cleaned = cleaned.substring(0, dot);
-      }
-      return cleaned;
+      // Fallback: ambil bagian waktu dari string ISO
+      var s = value.toString().replaceFirst('T', ' ').replaceFirst('Z', '');
+      final dot = s.indexOf('.');
+      if (dot != -1) s = s.substring(0, dot);
+      final parts = s.split(' ');
+      if (parts.length >= 2) return parts[1];
+      return s;
     }
   }
 
@@ -65,7 +81,7 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Absensi Saya')),
+      appBar: AppBar(title: const Text('Riwayat Absensi Saya (Lokal)')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -78,9 +94,14 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
                     final date = it['work_date'] as String?;
                     final inAt = it['check_in_at'];
                     final outAt = it['check_out_at'];
+                    final inTime = _fmtTimeLocal(inAt);
+                    final outTime = _fmtTimeLocal(outAt);
+                    final outLine = (outAt == null || outTime.isEmpty)
+                        ? 'OUT: '
+                        : 'OUT: $outTime WIB';
                     return ListTile(
-                      title: Text('Tanggal: ${date ?? '-'} | Shift: ${it['shift_id']} | Lokasi: ${it['location_id']}'),
-                      subtitle: Text('IN: ${_fmtDateTimeLocal(inAt)} WIB\nOUT: ${_fmtDateTimeLocal(outAt)} WIB'),
+                      title: Text('Tanggal: ${_fmtDateLocal(date)} | Shift: ${it['shift_id']} | Lokasi: ${it['location_id']}'),
+                      subtitle: Text('IN: $inTime WIB\n$outLine'),
                     );
                   },
                 ),
