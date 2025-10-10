@@ -15,13 +15,29 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
   bool _loading = false;
   String? _error;
 
-  String _fmtDateTimeLocal(String? iso) {
-    if (iso == null || iso.isEmpty) return '-';
+  String _fmtDateTimeLocal(dynamic value) {
+    if (value == null) return '-';
     try {
-      final dt = DateTime.parse(iso).toLocal();
-      return DateFormat('dd MMM yyyy HH:mm').format(dt);
+      DateTime dt;
+      if (value is DateTime) {
+        dt = value;
+      } else if (value is String) {
+        dt = DateTime.parse(value);
+      } else {
+        return value.toString();
+      }
+      final local = dt.toLocal();
+  return DateFormat('yyyy-MM-dd HH:mm:ss', 'id_ID').format(local);
     } catch (_) {
-      return iso;
+      final s = value.toString();
+      var cleaned = s.replaceFirst('T', ' ').replaceFirst('Z', '');
+      // Remove fractional seconds like .000
+      final dot = cleaned.indexOf('.');
+      if (dot != -1) {
+        // keep only up to seconds
+        cleaned = cleaned.substring(0, dot);
+      }
+      return cleaned;
     }
   }
 
@@ -60,8 +76,8 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
                   itemBuilder: (context, i) {
                     final it = _logs[i];
                     final date = it['work_date'] as String?;
-                    final inAt = it['check_in_at'] as String?;
-                    final outAt = it['check_out_at'] as String?;
+                    final inAt = it['check_in_at'];
+                    final outAt = it['check_out_at'];
                     return ListTile(
                       title: Text('Tanggal: ${date ?? '-'} | Shift: ${it['shift_id']} | Lokasi: ${it['location_id']}'),
                       subtitle: Text('IN: ${_fmtDateTimeLocal(inAt)} WIB\nOUT: ${_fmtDateTimeLocal(outAt)} WIB'),
