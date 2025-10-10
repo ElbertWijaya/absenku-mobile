@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../attendance/data/attendance_repository.dart';
 
 class MyAttendanceScreen extends StatefulWidget {
@@ -13,6 +14,16 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
   List<Map<String, dynamic>> _logs = [];
   bool _loading = false;
   String? _error;
+
+  String _fmtDateTimeLocal(String? iso) {
+    if (iso == null || iso.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return DateFormat('dd MMM yyyy HH:mm').format(dt);
+    } catch (_) {
+      return iso;
+    }
+  }
 
   Future<void> _load() async {
     setState(() {
@@ -53,7 +64,7 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
                     final outAt = it['check_out_at'] as String?;
                     return ListTile(
                       title: Text('Tanggal: ${date ?? '-'} | Shift: ${it['shift_id']} | Lokasi: ${it['location_id']}'),
-                      subtitle: Text('IN: ${inAt ?? '-'}\nOUT: ${outAt ?? '-'}'),
+                      subtitle: Text('IN: ${_fmtDateTimeLocal(inAt)} WIB\nOUT: ${_fmtDateTimeLocal(outAt)} WIB'),
                     );
                   },
                 ),
