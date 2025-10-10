@@ -1,5 +1,7 @@
+// Adjust login to navigate to RoleShell with user payload
 import 'package:flutter/material.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../shell/role_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,9 +25,17 @@ class _LoginScreenState extends State<LoginScreen> {
       error = null;
     });
     try {
-      await repo.login(emailC.text.trim(), passC.text);
+  final data = await repo.login(emailC.text.trim(), passC.text);
+  final user = data['user'] as Map<String, dynamic>?;
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home');
+      if (user != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => RoleShell(user: user)),
+        );
+      } else {
+        // Fallback ke home lama bila payload user tidak tersedia
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     } catch (e) {
       setState(() {
         error = 'Login gagal. Pastikan server berjalan dan kredensial benar. ($e)';
