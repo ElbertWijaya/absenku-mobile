@@ -36,6 +36,7 @@ export class QrService {
         token: qr.token,
         work_date: qr.work_date,
         expires_at: (qr.valid_until as any as Date).toISOString(),
+        reused: true,
       };
     }
     const now = new Date();
@@ -51,6 +52,7 @@ export class QrService {
       token: qr.token,
       work_date: qr.work_date,
       expires_at: (qr.valid_until as any as Date).toISOString(),
+      reused: false,
     };
   }
 }

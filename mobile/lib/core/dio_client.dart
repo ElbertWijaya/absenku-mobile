@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'config.dart';
 
@@ -16,18 +17,23 @@ class DioClient {
   ));
 
   final _storage = const FlutterSecureStorage();
+  bool _initialized = false;
 
   Future<void> init() async {
-    // Log request/response untuk debug 401
-    dio.interceptors.add(LogInterceptor(
-      request: true,
-      requestBody: true,
-      responseBody: true,
-      responseHeader: false,
-      error: true,
-      requestHeader: false,
-      logPrint: (obj) => print('[DIO] $obj'),
-    ));
+    if (_initialized) return;
+
+    // Log request/response hanya saat debug
+    if (kDebugMode) {
+      dio.interceptors.add(LogInterceptor(
+        request: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+        requestHeader: false,
+        logPrint: (obj) => debugPrint('[DIO] $obj'),
+      ));
+    }
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -39,9 +45,12 @@ class DioClient {
       },
     ));
 
-    // Info untuk memastikan base URL benar
-    // ignore: avoid_print
-    print('DEBUG API_BASE_URL: $apiBaseUrl');
+    // Info untuk memastikan base URL benar (hanya saat debug)
+    if (kDebugMode) {
+      debugPrint('DEBUG API_BASE_URL: $apiBaseUrl');
+    }
+
+    _initialized = true;
   }
 
   Future<void> saveToken(String token) async {

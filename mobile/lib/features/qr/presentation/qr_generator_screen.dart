@@ -51,6 +51,20 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
         final exp = data['expires_at'] as String?;
         _expiresAt = exp != null ? DateTime.tryParse(exp) : null;
       });
+      final reused = data['reused'] == true;
+      if (mounted && reused) {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Menggunakan Ulang QR'),
+            content: const Text('QR untuk hari ini sudah tersedia, menampilkan QR yang sama.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       setState(() => _error = 'Gagal generate QR: $e');
     } finally {
@@ -64,47 +78,102 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-load active QR on screen open
+    _loadActive();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('yyyy-MM-dd HH:mm:ss');
+    final dateFmt = DateFormat('dd MMM yyyy HH:mm');
     return Scaffold(
-      appBar: AppBar(title: const Text('QR Generator')),
+      appBar: AppBar(title: const Text('QR Absensi Hari Ini')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Row(children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _loadActive,
-                    child: const Text('Load Active'),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                ),
+
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_loading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: CircularProgressIndicator(),
+                        )
+                      else if (_token != null)
+                        Column(
+                          children: [
+                            QrImageView(
+                              data: _token!,
+                              size: 240,
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                if (_workDate != null)
+                                  Chip(
+                                    avatar: const Icon(Icons.today, size: 18),
+                                    label: Text('Tanggal: $_workDate'),
+                                  ),
+                                if (_expiresAt != null)
+                                  Chip(
+                                    avatar: const Icon(Icons.timer, size: 18),
+                                    label: Text('Berlaku s/d: ${dateFmt.format(_expiresAt!.toLocal())}')
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Tunjukkan QR ini kepada karyawan untuk scan. Token tidak ditampilkan demi keamanan.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                          ],
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: Column(
+                            children: const [
+                              Icon(Icons.qr_code_2, size: 72, color: Colors.black26),
+                              SizedBox(height: 12),
+                              Text('Belum ada QR untuk hari ini'),
+                              SizedBox(height: 4),
+                              Text('Tekan Generate untuk membuat QR harian', style: TextStyle(color: Colors.black54)),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _loading ? null : _issue,
-                    child: const Text('Generate Baru'),
-                  ),
+              ),
+
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _loading ? null : _issue,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Generate/Re-use'),
                 ),
-              ]),
-              const SizedBox(height: 24),
-              if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-              if (_token != null) ...[
-                Center(
-                  child: QrImageView(
-                    data: _token!,
-                    size: 220,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SelectableText('Token: $_token'),
-                if (_workDate != null) Text('Tanggal Kerja: $_workDate'),
-                if (_expiresAt != null)
-                  Text('Expires: ${dateFmt.format(_expiresAt!.toLocal())}'),
-              ] else
-                const Text('Belum ada token. Muat aktif atau generate baru.'),
+              ),
             ],
           ),
         ),

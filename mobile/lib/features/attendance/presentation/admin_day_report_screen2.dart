@@ -3,14 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import '../../../core/dio_client.dart';
 
-class AdminDayReportScreen extends StatefulWidget {
-  const AdminDayReportScreen({super.key});
+class AdminDayReportScreen2 extends StatefulWidget {
+  const AdminDayReportScreen2({super.key});
 
   @override
-  State<AdminDayReportScreen> createState() => _AdminDayReportScreenState();
+  State<AdminDayReportScreen2> createState() => _AdminDayReportScreen2State();
 }
 
-class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
+class _AdminDayReportScreen2State extends State<AdminDayReportScreen2> {
   DateTime _selected = DateTime.now();
   bool _loading = false;
   String? _error;
