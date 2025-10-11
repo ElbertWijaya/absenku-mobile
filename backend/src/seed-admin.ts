@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
+import { Role } from './entities/role.entity';
 import AppDataSource from './database/data-source';
 
 async function seedAdmin() {
@@ -8,7 +9,8 @@ async function seedAdmin() {
     await AppDataSource.initialize();
     console.log('✅ Database connection initialized');
 
-    const userRepository = AppDataSource.getRepository(User);
+  const userRepository = AppDataSource.getRepository(User);
+  const roleRepository = AppDataSource.getRepository(Role);
     
     // Check if admin user already exists
     const existingAdmin = await userRepository.findOne({
@@ -20,6 +22,14 @@ async function seedAdmin() {
       return;
     }
 
+    // Ensure ADMIN role exists
+    let adminRole = await roleRepository.findOne({ where: { name: 'ADMIN' } });
+    if (!adminRole) {
+      adminRole = roleRepository.create({ name: 'ADMIN' });
+      adminRole = await roleRepository.save(adminRole);
+      console.log('✅ Created role ADMIN');
+    }
+
     // Create admin user
     const hashedPassword = await bcrypt.hash('Admin@123', 10);
     
@@ -27,6 +37,7 @@ async function seedAdmin() {
       email: 'admin@example.com',
       username: 'admin',
       password_hash: hashedPassword,
+      roles: [adminRole],
     });
 
     await userRepository.save(adminUser);

@@ -6,6 +6,7 @@ import 'features/home/presentation/home_screen.dart';
 import 'features/qr/presentation/qr_generator_screen.dart';
 import 'features/attendance/presentation/qr_scan_checkin_screen.dart';
 import 'features/attendance/presentation/my_attendance_screen.dart';
+import 'features/attendance/presentation/admin_day_report_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,7 @@ class AbsenkuApp extends StatelessWidget {
         '/qr-generate': (_) => const QrGeneratorScreen(),
         '/scan-checkin': (_) => const QrScanCheckInScreen(),
         '/my-attendance': (_) => const MyAttendanceScreen(),
+        '/admin-report-day': (_) => const AdminDayReportScreen(),
       },
     );
   }

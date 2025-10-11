@@ -11,10 +11,9 @@ class QrGeneratorScreen extends StatefulWidget {
 }
 
 class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
-  final _locationC = TextEditingController(text: '1');
-  final _shiftC = TextEditingController(text: '1');
   String? _token;
   DateTime? _expiresAt;
+  String? _workDate;
   bool _loading = false;
   String? _error;
   final repo = QrRepository();
@@ -25,11 +24,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       _error = null;
     });
     try {
-      final locationId = int.parse(_locationC.text);
-      final shiftId = int.parse(_shiftC.text);
-      final data = await repo.getActive(locationId: locationId, shiftId: shiftId);
+      final data = await repo.getActive();
       setState(() {
         _token = data['token'] as String?;
+        _workDate = data['work_date'] as String?;
         final exp = data['expires_at'] as String?;
         _expiresAt = exp != null ? DateTime.tryParse(exp) : null;
       });
@@ -46,11 +44,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       _error = null;
     });
     try {
-      final locationId = int.parse(_locationC.text);
-      final shiftId = int.parse(_shiftC.text);
-      final data = await repo.issue(locationId: locationId, shiftId: shiftId);
+      final data = await repo.issue();
       setState(() {
         _token = data['token'] as String?;
+        _workDate = data['work_date'] as String?;
         final exp = data['expires_at'] as String?;
         _expiresAt = exp != null ? DateTime.tryParse(exp) : null;
       });
@@ -63,8 +60,6 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
 
   @override
   void dispose() {
-    _locationC.dispose();
-    _shiftC.dispose();
     super.dispose();
   }
 
@@ -79,24 +74,6 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _locationC,
-                    decoration: const InputDecoration(labelText: 'Location ID', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _shiftC,
-                    decoration: const InputDecoration(labelText: 'Shift ID', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 12),
               Row(children: [
                 Expanded(
                   child: ElevatedButton(
@@ -123,6 +100,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 ),
                 const SizedBox(height: 12),
                 SelectableText('Token: $_token'),
+                if (_workDate != null) Text('Tanggal Kerja: $_workDate'),
                 if (_expiresAt != null)
                   Text('Expires: ${dateFmt.format(_expiresAt!.toLocal())}'),
               ] else

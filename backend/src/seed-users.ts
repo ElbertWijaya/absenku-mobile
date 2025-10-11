@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import AppDataSource from './database/data-source';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
+import { Role } from './entities/role.entity';
 
 const users = [
   { email: 'elbert@example.com', username: 'Elbert' },
@@ -13,6 +14,13 @@ const users = [
 async function run() {
   await AppDataSource.initialize();
   const repo = AppDataSource.getRepository(User);
+  const roles = AppDataSource.getRepository(Role);
+  let employeeRole = await roles.findOne({ where: { name: 'EMPLOYEE' } });
+  if (!employeeRole) {
+    employeeRole = roles.create({ name: 'EMPLOYEE' });
+    employeeRole = await roles.save(employeeRole);
+    console.log('✅ Created role EMPLOYEE');
+  }
   const password = await bcrypt.hash('Password@123', 10);
 
   for (const u of users) {
@@ -25,6 +33,7 @@ async function run() {
       email: u.email,
       username: u.username,
       password_hash: password,
+      roles: [employeeRole],
     });
     await repo.save(entity);
     console.log(`Created user: ${u.username} <${u.email}>`);

@@ -15,8 +15,13 @@ class _RoleShellState extends State<RoleShell> {
   int _index = 0;
 
   bool get isAdmin {
-    final roles = (widget.user['roles'] as List?)?.map((e) => (e is Map) ? e['name'] : e).toList() ?? const [];
-    return roles.contains('admin') || roles.contains('Admin');
+    final raw = widget.user['roles'];
+    final List roles = raw is List ? raw : const [];
+    final names = roles.map((e) {
+      if (e is Map && e['name'] != null) return e['name'].toString();
+      return e.toString();
+    }).map((s) => s.toLowerCase()).toList();
+    return names.contains('admin');
   }
 
   Future<void> _logout() async {
@@ -27,7 +32,7 @@ class _RoleShellState extends State<RoleShell> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const _HomeTab(),
+      _HomeTab(isAdmin: isAdmin),
       if (isAdmin) const QrGeneratorScreen() else const QrScanCheckInScreen(),
       const _ProfileTab(),
     ];
@@ -58,7 +63,8 @@ class _RoleShellState extends State<RoleShell> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab();
+  final bool isAdmin;
+  const _HomeTab({this.isAdmin = false});
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -75,6 +81,17 @@ class _HomeTab extends StatelessWidget {
                 label: const Text('Riwayat Absensi Saya'),
               ),
             ),
+            if (isAdmin) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/admin-report-day'),
+                  icon: const Icon(Icons.calendar_today),
+                  label: const Text('Laporan Harian (Admin)'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

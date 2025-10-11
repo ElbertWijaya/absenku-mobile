@@ -25,4 +25,10 @@ export class AttendanceController {
     const userId: string = req?.user?.id;
     return this.svc.my(userId, { start, end });
   }
+
+  // Admin report: list all attendance activity for a specific date (yyyy-MM-dd)
+  @Get('report/day')
+  reportByDay(@Query('date') date: string) {
+    return this.svc.reportByDay(date);
+  }
 }

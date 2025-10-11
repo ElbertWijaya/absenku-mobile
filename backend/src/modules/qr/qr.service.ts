@@ -1,26 +1,56 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { QrCode } from '../../entities/qr-code.entity';
 
 @Injectable()
 export class QrService {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    @InjectRepository(QrCode) private readonly qrRepo: Repository<QrCode>,
+  ) {}
 
-  getActive(location_id: number, shift_id: number) {
-    if (!location_id || !shift_id) {
-      throw new BadRequestException('location_id and shift_id are required');
-    }
-    const ttl = Number(process.env.QR_TOKEN_TTL_SECONDS || 120);
-    const exp = new Date(Date.now() + ttl * 1000);
-    const token = this.jwt.sign({ loc: location_id, sh: shift_id, typ: 'qr' }, { expiresIn: `${ttl}s` });
+  private todayStr(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  async getActive() {
+    const today = this.todayStr();
+    let qr = await this.qrRepo.findOne({ where: { work_date: today } });
+    if (!qr) return { active: false };
     return {
-      token,
-      expires_at: exp.toISOString(),
-      shift_id,
-      location_id,
+      active: true,
+      token: qr.token,
+      work_date: qr.work_date,
+      expires_at: (qr.valid_until as any as Date).toISOString(),
     };
-    }
+  }
 
-  issue(location_id: number, shift_id: number) {
-    return this.getActive(location_id, shift_id);
+  async issue() {
+    const today = this.todayStr();
+    let qr = await this.qrRepo.findOne({ where: { work_date: today } });
+    if (qr) {
+      return {
+        active: true,
+        token: qr.token,
+        work_date: qr.work_date,
+        expires_at: (qr.valid_until as any as Date).toISOString(),
+      };
+    }
+    const now = new Date();
+    // valid until end of today (local time)
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const ttlSec = Math.max(60, Math.floor((endOfDay.getTime() - now.getTime()) / 1000));
+    const exp = new Date(now.getTime() + ttlSec * 1000);
+    const token = this.jwt.sign({ wd: today, typ: 'qr' }, { expiresIn: ttlSec });
+    qr = this.qrRepo.create({ work_date: today, token, valid_until: exp as any });
+    await this.qrRepo.save(qr);
+    return {
+      active: true,
+      token: qr.token,
+      work_date: qr.work_date,
+      expires_at: (qr.valid_until as any as Date).toISOString(),
+    };
   }
 }

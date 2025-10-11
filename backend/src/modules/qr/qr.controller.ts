@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { QrService } from './qr.service';
 
@@ -8,14 +8,9 @@ export class QrController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('active')
-  getActive(@Query('location_id') location_id: number, @Query('shift_id') shift_id: number) {
-    return this.qr.getActive(Number(location_id), Number(shift_id));
-  }
+  getActive() { return this.qr.getActive(); }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('issue')
-  issue(@Body() body: any) {
-    const { location_id, shift_id } = body ?? {};
-    return this.qr.issue(Number(location_id), Number(shift_id));
-  }
+  issue() { return this.qr.issue(); }
 }

@@ -16,6 +16,8 @@
     "migration:generate": "typeorm migration:generate src/database/migrations/auto -d src/database/data-source.ts",
     "seed:admin": "ts-node --transpile-only -r reflect-metadata src/seed-admin.ts",
     "seed:users": "ts-node --transpile-only -r reflect-metadata src/seed-users.ts"
+    ,
+    "seed:roles": "ts-node --transpile-only -r reflect-metadata src/seed-roles.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.7",

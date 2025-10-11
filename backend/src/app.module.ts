@@ -10,6 +10,7 @@ import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 import { Employee } from './entities/employee.entity';
 import { AttendanceLog } from './entities/attendance-log.entity';
+import { QrCode } from './entities/qr-code.entity';
 
 @Module({
   imports: [
@@ -24,8 +25,8 @@ import { AttendanceLog } from './entities/attendance-log.entity';
         password: cfg.get<string>('DB_PASS', 'supersecret'),
         database: cfg.get<string>('DB_NAME', 'absensi_db'),
         synchronize: false,
-        autoLoadEntities: true,
-  entities: [Role, User, Employee, AttendanceLog],
+    autoLoadEntities: true,
+  entities: [Role, User, Employee, AttendanceLog, QrCode],
         timezone: 'Z',
       }),
     }),
