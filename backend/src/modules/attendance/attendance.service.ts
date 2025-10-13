@@ -4,12 +4,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, Repository } from 'typeorm';
 import { AttendanceLog } from '../../entities/attendance-log.entity';
 import { User } from '../../entities/user.entity';
+import { Role } from '../../entities/role.entity';
 
 @Injectable()
 export class AttendanceService {
   constructor(
     @InjectRepository(AttendanceLog)
     private readonly logsRepo: Repository<AttendanceLog>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
+    @InjectRepository(Role)
+    private readonly rolesRepo: Repository<Role>,
     private readonly jwt: JwtService,
   ) {}
 
@@ -106,5 +111,88 @@ export class AttendanceService {
         'log.status as status',
       ]);
     return qb.getRawMany();
+  }
+
+  async monthSummary(year: number, month: number) {
+    if (!year || !month || month < 1 || month > 12) {
+      throw new BadRequestException('year and month are required');
+    }
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const start = `${year}-${pad2(month)}-01`;
+    // compute end-of-month by going to the first day of next month, minus one day
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const endDate = new Date(Date.UTC(nextYear, nextMonth - 1, 1));
+    endDate.setUTCDate(endDate.getUTCDate() - 1);
+    const end = `${endDate.getUTCFullYear()}-${pad2(endDate.getUTCMonth() + 1)}-${pad2(endDate.getUTCDate())}`;
+
+    const rows = await this.logsRepo.createQueryBuilder('log')
+      .where('log.work_date BETWEEN :start AND :end', { start, end })
+      .select('log.work_date', 'work_date')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect("SUM(CASE WHEN log.check_out_at IS NOT NULL THEN 1 ELSE 0 END)", 'with_out')
+  .addSelect("SUM(CASE WHEN log.check_out_at IS NULL THEN 1 ELSE 0 END)", 'open_count')
+      .addSelect("SUM(CASE WHEN log.status = 'late' THEN 1 ELSE 0 END)", 'late_count')
+      .addSelect("SUM(CASE WHEN log.status = 'on_time' THEN 1 ELSE 0 END)", 'on_time_count')
+      .groupBy('log.work_date')
+      .orderBy('log.work_date', 'ASC')
+      .getRawMany();
+    // return shape: [{ work_date, count, with_out, open_count, late_count, on_time_count }]
+    return rows.map((r: any) => ({
+      work_date: r.work_date,
+      count: Number(r.count),
+      with_out: Number(r.with_out ?? 0),
+      open_count: Number(r.open_count ?? 0),
+      late_count: Number(r.late_count ?? 0),
+      on_time_count: Number(r.on_time_count ?? 0),
+    }));
+  }
+
+  async rollcall(date: string) {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('date is required (yyyy-MM-dd)');
+    }
+    // Get all users with role EMPLOYEE
+    const employees = await this.usersRepo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.roles', 'r')
+      .leftJoinAndSelect('u.employee', 'e')
+      .where('r.name = :rn', { rn: 'EMPLOYEE' })
+      .getMany();
+
+    if (employees.length === 0) return [];
+
+    // Fetch attendance per user for that date
+    const userIds = employees.map((u) => u.id);
+    const logs = await this.logsRepo
+      .createQueryBuilder('log')
+      .where('log.user_id IN (:...ids)', { ids: userIds })
+      .andWhere('log.work_date = :date', { date })
+      .getMany();
+    const logByUser = new Map<string, AttendanceLog | undefined>();
+    for (const l of logs) logByUser.set(l.user_id, l);
+
+    // Compose rollcall items
+    const items = employees.map((u) => {
+      const log = logByUser.get(u.id);
+      let status: 'ABSEN' | 'HADIR' | 'TELAT' = 'ABSEN';
+      if (log) {
+        if (log.status === 'late' || (log.late_minutes ?? 0) > 0) status = 'TELAT';
+        else status = 'HADIR';
+      }
+      return {
+        user_id: u.id,
+        name: u.employee?.full_name ?? u.username ?? u.email,
+        email: u.email,
+        status,
+        check_in_at: log?.check_in_at ?? null,
+        check_out_at: log?.check_out_at ?? null,
+        late_minutes: log?.late_minutes ?? 0,
+        work_minutes: log?.work_minutes ?? null,
+      };
+    });
+    // Sort by name asc
+    items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return items;
   }
 }

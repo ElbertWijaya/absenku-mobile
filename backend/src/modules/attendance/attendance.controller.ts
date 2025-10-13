@@ -31,4 +31,18 @@ export class AttendanceController {
   reportByDay(@Query('date') date: string) {
     return this.svc.reportByDay(date);
   }
+
+  // Admin rollcall: returns all EMPLOYEE users with attendance status for a date
+  @Get('report/rollcall')
+  rollcall(@Query('date') date: string) {
+    return this.svc.rollcall(date);
+  }
+
+  // Admin month summary: return list of days with counts for a given month
+  @Get('report/month-summary')
+  monthSummary(@Query('year') year: string, @Query('month') month: string) {
+    const y = parseInt(year as any, 10);
+    const m = parseInt(month as any, 10);
+    return this.svc.monthSummary(y, m);
+  }
 }

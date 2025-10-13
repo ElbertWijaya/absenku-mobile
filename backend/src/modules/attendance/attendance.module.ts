@@ -5,6 +5,9 @@ import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttendanceLog } from '../../entities/attendance-log.entity';
+import { User } from '../../entities/user.entity';
+import { Role } from '../../entities/role.entity';
+import { Employee } from '../../entities/employee.entity';
 
 @Module({
   imports: [
@@ -13,7 +16,7 @@ import { AttendanceLog } from '../../entities/attendance-log.entity';
       secret: process.env.JWT_SECRET || 'dev-secret',
       signOptions: { algorithm: 'HS256' },
     }),
-    TypeOrmModule.forFeature([AttendanceLog]),
+  TypeOrmModule.forFeature([AttendanceLog, User, Role, Employee]),
   ],
   controllers: [AttendanceController],
   providers: [AttendanceService],
