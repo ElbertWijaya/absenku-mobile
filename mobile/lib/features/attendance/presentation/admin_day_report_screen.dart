@@ -16,23 +16,23 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
   String? _error;
   List<Map<String, dynamic>> _logs = [];
   final Dio _dio = DioClient().dio;
+  late final List<int> _yearOptions;
+  static const List<String> _monthNames = <String>[
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
 
   String get _dateStr => DateFormat('yyyy-MM-dd').format(_selected);
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final first = DateTime(now.year - 2);
-    final last = DateTime(now.year + 1);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selected,
-      firstDate: first,
-      lastDate: last,
-    );
-    if (picked != null) {
-      setState(() => _selected = picked);
-      await _load();
-    }
+  int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
+
+  Future<void> _onChangeYMD({int? year, int? month, int? day}) async {
+    final y = year ?? _selected.year;
+    final m = month ?? _selected.month;
+    final maxDay = _daysInMonth(y, m);
+    final d = (day ?? _selected.day).clamp(1, maxDay);
+    setState(() => _selected = DateTime(y, m, d));
+    await _load();
   }
 
   Future<void> _load() async {
@@ -54,6 +54,8 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _yearOptions = List<int>.generate(4, (i) => now.year - 2 + i);
     _load();
   }
 
@@ -63,37 +65,74 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Laporan Harian Absensi'),
-        actions: [
-          IconButton(onPressed: _pickDate, icon: const Icon(Icons.calendar_month)),
-        ],
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Tanggal dipilih', style: TextStyle(color: Colors.black54)),
-                      const SizedBox(height: 4),
-                      Text(_dateStr, style: Theme.of(context).textTheme.titleMedium),
-                    ],
-                  ),
+                const Text('Filter tanggal', style: TextStyle(color: Colors.black54)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Tahun
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _selected.year,
+                        items: _yearOptions
+                            .map((y) => DropdownMenuItem(value: y, child: Text('Tahun $y')))
+                            .toList(),
+                        onChanged: (v) => v == null ? null : _onChangeYMD(year: v),
+                        decoration: const InputDecoration(
+                          labelText: 'Tahun',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Bulan
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _selected.month,
+                        items: List<DropdownMenuItem<int>>.generate(
+                          12,
+                          (i) => DropdownMenuItem(
+                            value: i + 1,
+                            child: Text(_monthNames[i]),
+                          ),
+                        ),
+                        onChanged: (v) => v == null ? null : _onChangeYMD(month: v),
+                        decoration: const InputDecoration(
+                          labelText: 'Bulan',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Tanggal
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _selected.day.clamp(1, _daysInMonth(_selected.year, _selected.month)),
+                        items: List<int>.generate(
+                                _daysInMonth(_selected.year, _selected.month), (i) => i + 1)
+                            .map((d) => DropdownMenuItem(value: d, child: Text('Hari $d')))
+                            .toList(),
+                        onChanged: (v) => v == null ? null : _onChangeYMD(day: v),
+                        decoration: const InputDecoration(
+                          labelText: 'Tanggal',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _load,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Muat'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today),
-                  label: const Text('Pilih'),
-                ),
+                const SizedBox(height: 8),
+                Text(_dateStr, style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
           ),
