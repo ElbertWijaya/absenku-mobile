@@ -354,20 +354,53 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
             child: Text('Tidak ada data ringkasan untuk hari ini.'),
           );
         }
-        List<Widget> rows = [];
-        data.forEach((k, v) {
-          rows.add(Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(width: 140, child: Text(k, style: const TextStyle(color: Colors.black54))),
-                const SizedBox(width: 8),
-                Expanded(child: Text('$v', style: const TextStyle(fontWeight: FontWeight.w600))),
-              ],
-            ),
-          ));
-        });
+        // Show only the requested fields
+        final workDate = (data['work_date'] ?? '-') as String;
+        final present = ((data['present_count'] ?? 0) as num?)?.toInt() ?? 0;
+        final late = ((data['late_count'] ?? 0) as num?)?.toInt() ?? 0;
+        final totalEmp = ((data['employee_total'] ?? 0) as num?)?.toInt() ?? 0;
+        final absent = (totalEmp - present) < 0 ? 0 : (totalEmp - present);
+        List<Widget> rows = <MapEntry<String, String>>[
+          const MapEntry('Tanggal', ''),
+          const MapEntry('Jumlah Hadir', ''),
+          const MapEntry('Jumlah Telat', ''),
+          const MapEntry('Jumlah Absen', ''),
+          const MapEntry('Total Karyawan', ''),
+        ]
+            .asMap()
+            .entries
+            .map((e) {
+          final label = e.value.key;
+          final value = () {
+            switch (label) {
+              case 'Tanggal':
+                return workDate;
+              case 'Jumlah Hadir':
+                return '$present';
+              case 'Jumlah Telat':
+                return '$late';
+              case 'Jumlah Absen':
+                return '$absent';
+              case 'Total Karyawan':
+                return '$totalEmp';
+              default:
+                return '';
+            }
+          }();
+          return MapEntry(label, value);
+        })
+            .map((entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 160, child: Text(entry.key, style: const TextStyle(color: Colors.black54))),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(entry.value, style: const TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                  ),
+                ))
+            .toList();
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -377,6 +410,7 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
                 children: [
                   Text('Debug ringkasan: ${_selected.year}-${_selected.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
                       style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
                   const SizedBox(height: 12),
                   ...rows,
                 ],

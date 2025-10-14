@@ -18,24 +18,45 @@ export class AttendanceService {
     private readonly jwt: JwtService,
   ) {}
 
+  private pad2(n: number) { return String(n).padStart(2, '0'); }
+
+  // Convert a Date (server local) to WIB components and strings
+  private getNowWIB() {
+    const now = new Date();
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    const wibMs = utcMs + 7 * 3600000; // UTC+7
+    const d = new Date(wibMs);
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth() + 1;
+    const day = d.getUTCDate();
+    const dateStr = `${y}-${this.pad2(m)}-${this.pad2(day)}`;
+    return { now, utcMs: now.getTime(), wibDate: d, y, m, day, dateStr };
+  }
+
+  // Build an absolute UTC ms timestamp for a WIB wall-clock time on a given WIB date
+  private wibTimeToUtcMs(y: number, m: number, d: number, hh: number, mm: number) {
+    // 09:15 WIB == 02:15 UTC, generally UTC = WIB - 7 hours
+    return Date.UTC(y, m - 1, d, hh - 7, mm);
+  }
+
   async checkIn(userId: string, body: any) {
     const { qr_token } = body ?? {};
     if (!qr_token) throw new BadRequestException('qr_token is required');
-    const now = new Date();
+    const { now, utcMs, y, m, day, dateStr } = this.getNowWIB();
     // Validate qr_token
     try {
       const payload: any = this.jwt.verify(qr_token);
       if (payload?.typ !== 'qr') throw new UnauthorizedException('Invalid token');
       // ensure token's work_date matches today
       if (payload?.wd) {
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = dateStr;
         if (payload.wd !== todayStr) throw new UnauthorizedException('QR expired for today');
       }
     } catch (e) {
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('QR invalid or expired');
     }
-    const work_date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const work_date = dateStr;
 
     // Prevent duplicate open check-in for same user & date
     const existingOpen = await this.logsRepo.findOne({ where: { user_id: userId, work_date, check_out_at: IsNull() }, order: { id: 'DESC' } });
@@ -48,6 +69,10 @@ export class AttendanceService {
         location_id: existingOpen.location_id,
       };
     }
+    // Determine status based on WIB cutoff 09:15
+    const onTimeCutoffUtc = this.wibTimeToUtcMs(y, m, day, 9, 15);
+    const isOnTime = utcMs <= onTimeCutoffUtc;
+    const lateMinutes = isOnTime ? 0 : Math.max(0, Math.floor((utcMs - onTimeCutoffUtc) / 60000));
     const log = this.logsRepo.create({
       user_id: userId,
       employee_id: null,
@@ -55,8 +80,8 @@ export class AttendanceService {
   shift_id: 1,
   location_id: 1,
       check_in_at: now as any,
-      status: 'on_time',
-      late_minutes: 0,
+      status: (isOnTime ? 'on_time' : 'late') as any,
+      late_minutes: lateMinutes,
     });
     await this.logsRepo.save(log);
     return { status: log.status, work_date: log.work_date, shift_id: log.shift_id, location_id: log.location_id, message: 'Checked in' };
@@ -117,17 +142,19 @@ export class AttendanceService {
     if (!year || !month || month < 1 || month > 12) {
       throw new BadRequestException('year and month are required');
     }
-    const pad2 = (n: number) => String(n).padStart(2, '0');
-    const start = `${year}-${pad2(month)}-01`;
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const start = `${year}-${pad2(month)}-01`;
     // compute end-of-month by going to the first day of next month, minus one day
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
     const endDate = new Date(Date.UTC(nextYear, nextMonth - 1, 1));
     endDate.setUTCDate(endDate.getUTCDate() - 1);
     const end = `${endDate.getUTCFullYear()}-${pad2(endDate.getUTCMonth() + 1)}-${pad2(endDate.getUTCDate())}`;
-  // Today string (local)
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+    // Today (WIB) and cutoff determination
+    const nowW = this.getNowWIB();
+    const todayWibStr = nowW.dateStr;
+    const cutoffUtcToday = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, 16, 30);
+    const cutoffPassed = nowW.utcMs >= cutoffUtcToday;
 
     // Total employees with role EMPLOYEE
     const employees = await this.usersRepo
@@ -241,10 +268,11 @@ export class AttendanceService {
       const present = presentJoin > 0 ? presentJoin : presentDistinct;
       const late = Number(r.late_count ?? 0);
       const ontime = Number(r.on_time_count ?? 0);
-      const allAbsent = employeeTotal > 0 && present === 0;
+      const isFuture = dd > todayWibStr;
+      const isToday = dd === todayWibStr;
+      const allAbsent = employeeTotal > 0 && present === 0 && (!isToday || (isToday && cutoffPassed));
       const anyLate = late > 0;
       const allOnTimeStrict = employeeTotal > 0 && ontime === employeeTotal && late === 0;
-      const isFuture = dd > todayStr;
       out.push({
         work_date: dd,
         present_count: present,
@@ -257,6 +285,8 @@ export class AttendanceService {
         any_late: anyLate,
         all_on_time_strict: allOnTimeStrict,
         is_future: isFuture,
+        // additional runtime flag (not consumed by client currently)
+        _cutoff_passed: isToday ? cutoffPassed : (dd < todayWibStr ? true : false),
         // debug fields to help diagnose aggregation on client
         _present_join: presentJoin,
         _present_distinct: presentDistinct,
@@ -272,10 +302,13 @@ export class AttendanceService {
       throw new BadRequestException('date is required (yyyy-MM-dd)');
     }
     // Determine if the requested date is in the future (relative to today local time)
-    const today = new Date();
-    const pad2 = (n: number) => String(n).padStart(2, '0');
-    const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
-    const isFuture = date > todayStr;
+  const nowW = this.getNowWIB();
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const todayStr = nowW.dateStr;
+  const isFuture = date > todayStr;
+  const isToday = date === todayStr;
+  const cutoffUtc = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, 16, 30);
+  const cutoffPassed = nowW.utcMs >= cutoffUtc;
     // Get all users with role EMPLOYEE
     const employees = await this.usersRepo
       .createQueryBuilder('u')
@@ -316,6 +349,9 @@ export class AttendanceService {
       } else if (log) {
         if (log.status === 'late' || (log.late_minutes ?? 0) > 0) status = 'TELAT';
         else status = 'HADIR';
+      } else if (isToday && !cutoffPassed) {
+        // Before 16:30 WIB on the same day, not yet decided -> show '-'
+        status = '-';
       }
       return {
         user_id: u.id,
