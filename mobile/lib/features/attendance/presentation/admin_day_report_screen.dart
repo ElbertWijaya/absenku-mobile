@@ -19,6 +19,9 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
   Set<int> _daysWithData = <int>{};
   Set<int> _daysWithLate = <int>{};
   Set<int> _daysAllOnTime = <int>{};
+  Set<int> _daysAllAbsent = <int>{};
+  // DEBUG: store raw per-day summary for inspection
+  Map<int, Map<String, dynamic>> _daySummary = <int, Map<String, dynamic>>{};
   static const List<String> _monthNames = <String>[
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -26,6 +29,62 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
 
 
   int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
+
+  Future<void> _pickYear() async {
+    final chosen = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: ListView(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text('Pilih Tahun', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              ..._yearOptions.map((y) => ListTile(
+                    title: Text('$y'),
+                    trailing: y == _selected.year ? const Icon(Icons.check) : null,
+                    onTap: () => Navigator.pop(ctx, y),
+                  )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (chosen != null) {
+      await _onChangeYM(year: chosen);
+    }
+  }
+
+  Future<void> _pickMonth() async {
+    final chosen = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: ListView(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text('Pilih Bulan', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              ...List.generate(12, (i) => i + 1).map((m) => ListTile(
+                    title: Text(_monthNames[m - 1]),
+                    trailing: m == _selected.month ? const Icon(Icons.check) : null,
+                    onTap: () => Navigator.pop(ctx, m),
+                  )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (chosen != null) {
+      await _onChangeYM(month: chosen);
+    }
+  }
 
   Future<void> _onChangeYM({int? year, int? month}) async {
     final y = year ?? _selected.year;
@@ -58,6 +117,13 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Laporan Harian Absensi'),
+        actions: [
+          IconButton(
+            tooltip: 'Muat ulang',
+            onPressed: _loadingSummary ? null : _loadMonthSummary,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -66,60 +132,24 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Pilih Bulan & Tahun', style: TextStyle(color: Colors.black54)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    // Tahun
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: _selected.year,
-                        items: _yearOptions
-                            .map((y) => DropdownMenuItem(value: y, child: Text('Tahun $y')))
-                            .toList(),
-                        onChanged: (v) => v == null ? null : _onChangeYM(year: v),
-                        decoration: const InputDecoration(
-                          labelText: 'Tahun',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Bulan
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: _selected.month,
-                        items: List<DropdownMenuItem<int>>.generate(
-                          12,
-                          (i) => DropdownMenuItem(
-                            value: i + 1,
-                            child: Text(_monthNames[i]),
-                          ),
-                        ),
-                        onChanged: (v) => v == null ? null : _onChangeYM(month: v),
-                        decoration: const InputDecoration(
-                          labelText: 'Bulan',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: Center(
                         child: Text(
                           '${_monthNames[_selected.month - 1]} ${_selected.year}',
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
                       onPressed: () {
                         final now = DateTime.now();
                         _onChangeYM(year: now.year, month: now.month);
@@ -128,6 +158,29 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
                       label: const Text('Hari ini'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 6),
+                // Very compact chips for explicit Year/Month pickers
+                Center(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      ActionChip(
+                        label: Text('${_selected.year}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        avatar: const Icon(Icons.calendar_today, size: 16),
+                        onPressed: _pickYear,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      ActionChip(
+                        label: Text(_monthNames[_selected.month - 1], style: const TextStyle(fontWeight: FontWeight.w600)),
+                        avatar: const Icon(Icons.expand_more, size: 16),
+                        onPressed: _pickMonth,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Weekday header (Senin..Minggu)
@@ -151,7 +204,18 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
                         if (_summaryError != null)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Text(_summaryError!, style: const TextStyle(color: Colors.red)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(_summaryError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                                const SizedBox(height: 8),
+                                OutlinedButton.icon(
+                                  onPressed: _loadingSummary ? null : _loadMonthSummary,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Coba lagi'),
+                                ),
+                              ],
+                            ),
                           ),
                         _MonthGrid(
                           year: _selected.year,
@@ -159,10 +223,22 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
                           daysWithData: _daysWithData,
                           daysWithLate: _daysWithLate,
                           daysAllOnTime: _daysAllOnTime,
+                          daysAllAbsent: _daysAllAbsent,
                           onDayTap: (d) => _openDayDetail(DateTime(_selected.year, _selected.month, d)),
+                          onDayLongPress: (d) => _showDayDebug(d),
                         ),
+                        if (_summaryError == null && !_loadingSummary && _daysWithData.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Belum ada data pada bulan ini.',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                          ),
                         const SizedBox(height: 8),
                         _LegendRow(),
+                        const SizedBox(height: 6),
+                        const _DateLegendRow(),
                         if (_loadingSummary)
                           const Padding(
                             padding: EdgeInsets.only(top: 8),
@@ -188,6 +264,8 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
   _daysWithData = <int>{};
   _daysWithLate = <int>{};
   _daysAllOnTime = <int>{};
+  _daysAllAbsent = <int>{};
+  _daySummary = <int, Map<String, dynamic>>{};
     });
     try {
       final res = await _dio.get('/attendance/report/month-summary', queryParameters: {
@@ -198,16 +276,39 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
       final days = <int>{};
       final daysLate = <int>{};
       final daysOnTime = <int>{};
+      final daysAllAbsent = <int>{};
       for (final it in list) {
         final wd = (it['work_date'] ?? '') as String;
         if (wd.length >= 10) {
           final day = int.tryParse(wd.substring(8, 10));
           if (day != null) {
-            days.add(day);
-            final lateCount = (it['late_count'] ?? 0) as int;
-            final onTimeCount = (it['on_time_count'] ?? 0) as int;
-            if (lateCount > 0) daysLate.add(day);
-            if (lateCount == 0 && onTimeCount > 0) daysOnTime.add(day);
+            _daySummary[day] = it; // keep raw for debug
+            final dynamic pRaw = it['present_count'];
+            final dynamic eRaw = it['employee_total'];
+            int present = pRaw is num ? pRaw.toInt() : int.tryParse('${pRaw ?? 0}') ?? 0;
+            final empTotal = eRaw is num ? eRaw.toInt() : int.tryParse('${eRaw ?? 0}') ?? 0;
+            final isFuture = it['is_future'] == true;
+            final anyLate = (it['any_late'] == true) || (((it['late_count'] ?? 0) as num?)?.toInt() ?? 0) > 0;
+            final allOnTimeStrict = (it['all_on_time_strict'] == true);
+            // Defensive: if present_count==0 but other counters suggest presence, treat as presence for coloring
+            final withOut = ((it['with_out'] ?? 0) as num?)?.toInt() ?? 0;
+            final openCount = ((it['open_count'] ?? 0) as num?)?.toInt() ?? 0;
+            final onTimeCount = ((it['on_time_count'] ?? 0) as num?)?.toInt() ?? 0;
+            final hasPresenceSignals = (withOut + openCount + onTimeCount) > 0;
+            if (present == 0 && hasPresenceSignals) present = 1;
+            // Derive all-absent strictly from present count to avoid backend/client mismatch
+            // Do NOT mark future days (no presence yet) as 'Semua absen'.
+            final allAbsent = !isFuture && present == 0 && empTotal > 0;
+
+            // Mark which days show a dot
+            // - Future days with 0 presence: no dot.
+            if (present > 0 || allAbsent) days.add(day);
+
+            if (allAbsent) daysAllAbsent.add(day);
+            // Late takes precedence over on-time
+            if (!allAbsent && present > 0 && anyLate) daysLate.add(day);
+            // Truly all on-time only when everyone (empTotal) is present and on-time
+            if (!allAbsent && present > 0 && !anyLate && allOnTimeStrict && present == empTotal) daysOnTime.add(day);
           }
         }
       }
@@ -215,12 +316,76 @@ class _AdminDayReportScreenState extends State<AdminDayReportScreen> {
         _daysWithData = days;
         _daysWithLate = daysLate;
         _daysAllOnTime = daysOnTime;
+        _daysAllAbsent = daysAllAbsent;
       });
+    } on DioException catch (e) {
+      // Tangani 401: arahkan ke login
+      final status = e.response?.statusCode ?? 0;
+      if (status == 401) {
+        setState(() => _summaryError = 'Sesi berakhir. Silakan login kembali.');
+        if (mounted) {
+          // Navigasi ke login setelah sedikit delay agar UI sempat update
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            }
+          });
+        }
+      } else {
+        setState(() => _summaryError = 'Gagal memuat ringkasan bulan: ${e.message}');
+      }
     } catch (e) {
       setState(() => _summaryError = 'Gagal memuat ringkasan bulan: $e');
     } finally {
       setState(() => _loadingSummary = false);
     }
+  }
+
+  // DEBUG helper: show raw summary in a modal for the selected day
+  void _showDayDebug(int day) {
+    final data = _daySummary[day];
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        if (data == null) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('Tidak ada data ringkasan untuk hari ini.'),
+          );
+        }
+        List<Widget> rows = [];
+        data.forEach((k, v) {
+          rows.add(Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 140, child: Text(k, style: const TextStyle(color: Colors.black54))),
+                const SizedBox(width: 8),
+                Expanded(child: Text('$v', style: const TextStyle(fontWeight: FontWeight.w600))),
+              ],
+            ),
+          ));
+        });
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Debug ringkasan: ${_selected.year}-${_selected.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  ...rows,
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -254,8 +419,10 @@ class _MonthGrid extends StatelessWidget {
   final Set<int> daysWithData;
   final Set<int> daysWithLate;
   final Set<int> daysAllOnTime;
+  final Set<int> daysAllAbsent;
   final ValueChanged<int> onDayTap;
-  const _MonthGrid({required this.year, required this.month, required this.daysWithData, required this.daysWithLate, required this.daysAllOnTime, required this.onDayTap});
+  final ValueChanged<int>? onDayLongPress;
+  const _MonthGrid({required this.year, required this.month, required this.daysWithData, required this.daysWithLate, required this.daysAllOnTime, required this.daysAllAbsent, required this.onDayTap, this.onDayLongPress});
 
   int _daysInMonth(int y, int m) => DateTime(y, m + 1, 0).day;
 
@@ -280,21 +447,34 @@ class _MonthGrid extends StatelessWidget {
               return const Expanded(child: SizedBox(height: 42));
             }
             final now = DateTime.now();
-            final isToday = (year == now.year && month == now.month && dayNum == now.day);
+            final today = DateTime(now.year, now.month, now.day);
+            final cellDate = DateTime(year, month, dayNum);
+            final isToday = cellDate.year == today.year && cellDate.month == today.month && cellDate.day == today.day;
+            final isPast = cellDate.isBefore(today);
+            final isFuture = cellDate.isAfter(today);
             final hasData = daysWithData.contains(dayNum);
             final hasLate = daysWithLate.contains(dayNum);
             final allOnTime = daysAllOnTime.contains(dayNum);
-            final cs = Theme.of(context).colorScheme;
-            final bg = isToday ? cs.primary : null;
-            final borderColor = isToday ? cs.primary : const Color(0xFF222222);
-            final textStyle = TextStyle(
+            final allAbsent = daysAllAbsent.contains(dayNum);
+      final cs = Theme.of(context).colorScheme;
+      // Background tints for clearer visual separation
+      final Color bg = isToday
+        ? cs.primary
+        : (isPast
+          ? const Color(0xFFEDEDED) // slightly darker gray for past
+          : const Color(0xFFF4F6FF)); // subtle blue-ish tint for future
+      final borderColor = isToday
+        ? cs.primary
+        : (isPast ? const Color(0xFFB0B0B0) : const Color(0xFFB5C2FF));
+      final textStyle = TextStyle(
               fontWeight: FontWeight.w600,
-              color: isToday ? cs.onPrimary : null,
+              color: isToday ? cs.onPrimary : (isFuture ? Colors.black54 : Colors.black87),
             );
             return Expanded(
               child: InkWell(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(8),
                 onTap: () => onDayTap(dayNum),
+                onLongPress: onDayLongPress == null ? null : () => onDayLongPress!(dayNum),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Column(
@@ -304,8 +484,8 @@ class _MonthGrid extends StatelessWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
                           color: bg,
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: borderColor, width: 2),
                         ),
                         alignment: Alignment.center,
@@ -317,7 +497,9 @@ class _MonthGrid extends StatelessWidget {
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
-                            color: hasLate ? Colors.orange : (allOnTime ? Colors.green : cs.primary),
+                            color: allAbsent
+                                ? Colors.red
+                                : (hasLate ? Colors.orange : (allOnTime ? Colors.green : cs.primary)),
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -355,6 +537,46 @@ class _LegendRow extends StatelessWidget {
           item(Colors.green, 'Semua tepat waktu'),
           item(Colors.orange, 'Ada terlambat'),
           item(cs.primary, 'Campuran'),
+          item(Colors.red, 'Semua absen'),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateLegendRow extends StatelessWidget {
+  const _DateLegendRow();
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    Widget box({Color? bg, required Color border, required String text}) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: border, width: 2),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        ],
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 6,
+        alignment: WrapAlignment.center,
+        children: [
+          box(bg: const Color(0xFFEDEDED), border: const Color(0xFFB0B0B0), text: 'Tanggal lewat'),
+          box(bg: cs.primary, border: cs.primary, text: 'Hari ini'),
+          box(bg: const Color(0xFFF4F6FF), border: const Color(0xFFB5C2FF), text: 'Mendatang'),
         ],
       ),
     );

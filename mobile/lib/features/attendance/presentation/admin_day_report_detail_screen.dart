@@ -36,6 +36,20 @@ class _AdminDayReportDetailScreenState extends State<AdminDayReportDetailScreen>
       setState(() {
         _rows = data;
       });
+    } on DioException catch (e) {
+      final status = e.response?.statusCode ?? 0;
+      if (status == 401) {
+        setState(() => _error = 'Sesi berakhir. Silakan login kembali.');
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            }
+          });
+        }
+      } else {
+        setState(() => _error = 'Gagal memuat laporan: ${e.message}');
+      }
     } catch (e) {
       setState(() => _error = 'Gagal memuat laporan: $e');
     } finally {
@@ -46,26 +60,60 @@ class _AdminDayReportDetailScreenState extends State<AdminDayReportDetailScreen>
   @override
   Widget build(BuildContext context) {
     final timeFmt = DateFormat('HH:mm');
+    final isFuture = widget.date.isAfter(DateTime.now());
     return Scaffold(
       appBar: AppBar(
         title: Text('Detail ${DateFormat('d MMMM yyyy', 'id_ID').format(widget.date)}'),
+        actions: [
+          IconButton(
+            tooltip: 'Muat ulang',
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : ListView.separated(
+              : _rows.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.info_outline, color: Colors.black54),
+                            const SizedBox(height: 8),
+                            Text(
+                              isFuture
+                                  ? 'Tanggal belum berjalan. Data akan muncul setelah ada absensi.'
+                                  : 'Tidak ada data untuk tanggal ini. Pastikan pengguna dengan role EMPLOYEE sudah terdaftar.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: _loading ? null : _load,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Muat ulang'),
+                            )
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   itemBuilder: (context, i) {
                     final it = _rows[i];
                     final name = (it['name'] ?? it['email'] ?? '-').toString();
                     final email = (it['email'] ?? '').toString();
-                    final status = (it['status'] ?? '-').toString(); // ABSEN/HADIR/TELAT
+                    final status = (it['status'] ?? '-').toString(); // ABSEN/HADIR/TELAT/-
                     DateTime? inAt = it['check_in_at'] != null ? DateTime.tryParse(it['check_in_at']) : null;
                     DateTime? outAt = it['check_out_at'] != null ? DateTime.tryParse(it['check_out_at']) : null;
                     final statusColor = status == 'TELAT'
                         ? Colors.orange
-                        : (status == 'ABSEN' ? Colors.red : Colors.green);
+                        : (status == 'ABSEN' ? Colors.red : (status == '-' ? Colors.grey : Colors.green));
                     return Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -90,6 +138,11 @@ class _AdminDayReportDetailScreenState extends State<AdminDayReportDetailScreen>
                                 if (email.isNotEmpty)
                                   Text(email, style: const TextStyle(color: Colors.black54, fontSize: 12)),
                                 const SizedBox(height: 8),
+                                if (isFuture)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4.0),
+                                    child: Text('Tanggal belum berjalan', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                  ),
                                 Wrap(
                                   spacing: 12,
                                   runSpacing: 8,
