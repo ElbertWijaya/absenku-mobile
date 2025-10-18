@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, IsNull, Repository } from 'typeorm';
@@ -16,9 +17,31 @@ export class AttendanceService {
     @InjectRepository(Role)
     private readonly rolesRepo: Repository<Role>,
     private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   private pad2(n: number) { return String(n).padStart(2, '0'); }
+
+  private onTimeHM = { h: 9, m: 15 };
+  private absentHM = { h: 16, m: 30 };
+
+  private parseHm(value: string | undefined, defH: number, defM: number) {
+    if (!value) return { h: defH, m: defM };
+    const m = value.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+    if (!m) return { h: defH, m: defM };
+    const hh = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    return { h: hh, m: mm };
+  }
+
+  // Initialize configurable cutoffs from env
+  private initCutoffsIfNeeded() {
+    if (this.onTimeHM && this.absentHM) return;
+    const on = this.config.get<string>('ATTENDANCE_ON_TIME_CUTOFF', '09:15');
+    const ab = this.config.get<string>('ATTENDANCE_ABSENT_CUTOFF', '16:30');
+    this.onTimeHM = this.parseHm(on, 9, 15);
+    this.absentHM = this.parseHm(ab, 16, 30);
+  }
 
   // Convert a Date (server local) to WIB components and strings
   private getNowWIB() {
@@ -40,6 +63,8 @@ export class AttendanceService {
   }
 
   async checkIn(userId: string, body: any) {
+    // Ensure cutoffs are loaded
+    this.initCutoffsIfNeeded();
     const { qr_token } = body ?? {};
     if (!qr_token) throw new BadRequestException('qr_token is required');
     const { now, utcMs, y, m, day, dateStr } = this.getNowWIB();
@@ -69,8 +94,8 @@ export class AttendanceService {
         location_id: existingOpen.location_id,
       };
     }
-    // Determine status based on WIB cutoff 09:15
-    const onTimeCutoffUtc = this.wibTimeToUtcMs(y, m, day, 9, 15);
+  // Determine status based on WIB cutoff from env (default 09:15)
+  const onTimeCutoffUtc = this.wibTimeToUtcMs(y, m, day, this.onTimeHM.h, this.onTimeHM.m);
     const isOnTime = utcMs <= onTimeCutoffUtc;
     const lateMinutes = isOnTime ? 0 : Math.max(0, Math.floor((utcMs - onTimeCutoffUtc) / 60000));
     const log = this.logsRepo.create({
@@ -139,6 +164,8 @@ export class AttendanceService {
   }
 
   async monthSummary(year: number, month: number) {
+    // Ensure cutoffs are loaded
+    this.initCutoffsIfNeeded();
     if (!year || !month || month < 1 || month > 12) {
       throw new BadRequestException('year and month are required');
     }
@@ -151,9 +178,9 @@ export class AttendanceService {
     endDate.setUTCDate(endDate.getUTCDate() - 1);
     const end = `${endDate.getUTCFullYear()}-${pad2(endDate.getUTCMonth() + 1)}-${pad2(endDate.getUTCDate())}`;
     // Today (WIB) and cutoff determination
-    const nowW = this.getNowWIB();
+  const nowW = this.getNowWIB();
     const todayWibStr = nowW.dateStr;
-    const cutoffUtcToday = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, 16, 30);
+  const cutoffUtcToday = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, this.absentHM.h, this.absentHM.m);
     const cutoffPassed = nowW.utcMs >= cutoffUtcToday;
 
     // Total employees with role EMPLOYEE
@@ -298,6 +325,8 @@ export class AttendanceService {
   }
 
   async rollcall(date: string) {
+    // Ensure cutoffs are loaded
+    this.initCutoffsIfNeeded();
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new BadRequestException('date is required (yyyy-MM-dd)');
     }
@@ -307,7 +336,7 @@ export class AttendanceService {
   const todayStr = nowW.dateStr;
   const isFuture = date > todayStr;
   const isToday = date === todayStr;
-  const cutoffUtc = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, 16, 30);
+  const cutoffUtc = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, this.absentHM.h, this.absentHM.m);
   const cutoffPassed = nowW.utcMs >= cutoffUtc;
     // Get all users with role EMPLOYEE
     const employees = await this.usersRepo
