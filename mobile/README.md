@@ -1,16 +1,33 @@
 # mobile
 
-A new Flutter project.
+A Flutter client for Absenku.
 
-## Getting Started
+## Quick start
 
-This project is a starting point for a Flutter application.
+- Make sure the backend is running (see `backend/README.md`).
+- Configure the API base URL (see below).
+- Run the app on your desired platform.
 
-A few resources to get you started if this is your first Flutter project:
+## API base URL
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+The app reads the API base URL from a compile-time define:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Key: `API_BASE_URL`
+- Default: `http://10.0.2.2:3000` (Android emulator only)
+
+Override per platform at run time:
+
+- Android emulator: usually no override needed (uses 10.0.2.2 → host machine)
+- Physical device: set to your PC IP, for example `http://192.168.1.10:3000`
+- Web/Chrome: set to `http://localhost:3000` (ensure backend CORS allows it)
+
+Example run (Chrome):
+
+```
+flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000
+```
+
+## Testing guide
+
+For end-to-end testing scenarios (login, QR check-in, reports), follow `mobile/TESTING.md`.
+

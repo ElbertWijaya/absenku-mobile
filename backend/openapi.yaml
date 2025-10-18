@@ -220,11 +220,71 @@ paths:
       responses:
         '204': { description: No Content }
 
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: Ganti password akun saat ini
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 6 }
+      responses:
+        '200': { description: OK }
+
   /me:
     get:
       tags: [Me]
       security: [{ bearerAuth: [] }]
       summary: Profile saat ini
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /me/identity:
+    patch:
+      tags: [Me]
+      security: [{ bearerAuth: [] }]
+      summary: Update nama lengkap dan username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name: { type: string }
+                username: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /me/phone:
+    patch:
+      tags: [Me]
+      security: [{ bearerAuth: [] }]
+      summary: Update nomor HP (employee)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
       responses:
         '200':
           description: OK
