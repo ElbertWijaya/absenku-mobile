@@ -81,7 +81,7 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Absensi Saya (Lokal)')),
+      appBar: AppBar(title: const Text('Riwayat Absensi Saya')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -99,8 +99,12 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
                     final outLine = (outAt == null || outTime.isEmpty)
                         ? 'OUT: '
                         : 'OUT: $outTime WIB';
+                    final locName = (it['location_name'] ?? it['location'])?.toString();
+                    final locDisplay = (locName != null && locName.isNotEmpty)
+                        ? locName
+                        : (it['location_id']?.toString() ?? '-');
                     return ListTile(
-                      title: Text('Tanggal: ${_fmtDateLocal(date)} | Lokasi: ${it['location_id']}'),
+                      title: Text('Tanggal: ${_fmtDateLocal(date)} | Lokasi: $locDisplay'),
                       subtitle: Text('IN: $inTime WIB\n$outLine'),
                     );
                   },

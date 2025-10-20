@@ -3,6 +3,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Kamera untuk fitur scan (nanti) -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Deklarasi fitur kamera untuk kompatibilitas beberapa perangkat -->
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
