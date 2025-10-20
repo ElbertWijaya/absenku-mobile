@@ -28,7 +28,12 @@ class AbsenkuApp extends StatelessWidget {
         '/login': (_) => const LoginScreen(),
         '/home': (_) => const HomeScreen(),
         '/qr-generate': (_) => const QrGeneratorScreen(),
-        '/scan-checkin': (_) => const QrScanCheckInScreen(),
+        '/scan-checkin': (ctx) => QrScanCheckInScreen(
+              onSuccessNavigateHome: () {
+                // Kembali ke shell/home ketika selesai scan
+                Navigator.of(ctx).popUntil((r) => r.isFirst);
+              },
+            ),
         '/my-attendance': (_) => const MyAttendanceScreen(),
         '/admin-report-day': (_) => const AdminDayReportScreen(),
       },

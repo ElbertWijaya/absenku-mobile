@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import '../../core/dio_client.dart';
-import '../attendance/presentation/qr_scan_checkin_screen.dart';
 import '../qr/presentation/qr_generator_screen.dart';
 import '../profile/presentation/profile_admin_screen.dart';
 import '../attendance/presentation/admin_day_report_detail_screen.dart';
@@ -37,11 +36,19 @@ class _RoleShellState extends State<RoleShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      _HomeTab(isAdmin: isAdmin),
-      if (isAdmin) const QrGeneratorScreen() else const QrScanCheckInScreen(),
-  const ProfileAdminScreen(),
-    ];
+  Widget buildBody() {
+      switch (_index) {
+        case 0:
+          return _HomeTab(isAdmin: isAdmin);
+        case 1:
+          // Non-admin: tab Scan diubah menjadi aksi push route, jadi body tidak perlu diisi scan.
+          // Admin: tetap gunakan Generator.
+          if (isAdmin) return const QrGeneratorScreen();
+          return _HomeTab(isAdmin: false);
+        default:
+          return const ProfileAdminScreen();
+      }
+    }
     final items = <BottomNavigationBarItem>[
       const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
       if (isAdmin)
@@ -58,10 +65,17 @@ class _RoleShellState extends State<RoleShell> {
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Logout'),
         ],
       ),
-      body: IndexedStack(index: _index, children: pages),
+  body: buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        onTap: (i) {
+          if (!isAdmin && i == 1) {
+            // Untuk karyawan, tombol Scan bertindak sebagai aksi membuka route scan.
+            Navigator.pushNamed(context, '/scan-checkin');
+            return;
+          }
+          setState(() => _index = i);
+        },
         items: items,
       ),
     );

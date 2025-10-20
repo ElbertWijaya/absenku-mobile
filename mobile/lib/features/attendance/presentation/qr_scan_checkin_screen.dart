@@ -1,36 +1,42 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../attendance/data/attendance_repository.dart';
 
 class QrScanCheckInScreen extends StatefulWidget {
-  const QrScanCheckInScreen({super.key});
+  final VoidCallback? onSuccessNavigateHome;
+  const QrScanCheckInScreen({super.key, this.onSuccessNavigateHome});
 
   @override
   State<QrScanCheckInScreen> createState() => _QrScanCheckInScreenState();
 }
 
-class _QrScanCheckInScreenState extends State<QrScanCheckInScreen> with WidgetsBindingObserver {
+class _QrScanCheckInScreenState extends State<QrScanCheckInScreen>
+    with WidgetsBindingObserver {
   final repo = AttendanceRepository();
-  bool _processing = false;
-  String? _result;
   late final MobileScannerController _controller;
-  String? _cameraError;
-  // Track app lifecycle to pause/resume camera
+  StreamSubscription<Object?>? _subscription;
+  bool _processing = false;
+  bool _handled = false;
+  String? _errorText;
 
   @override
   void initState() {
     super.initState();
+    _controller = MobileScannerController(autoStart: false);
     WidgetsBinding.instance.addObserver(this);
-    _controller = MobileScannerController(
-      facing: CameraFacing.back,
-      detectionSpeed: DetectionSpeed.noDuplicates,
-      formats: const [BarcodeFormat.qrCode],
-    );
+    // Subscribe to barcodes when starting (we start in initState end)
+    _subscription = _controller.barcodes.listen(_onBarcode);
+    // Start the camera explicitly to avoid surprises
+    unawaited(_controller.start());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_subscription?.cancel());
+    _subscription = null;
     _controller.dispose();
     super.dispose();
   }
@@ -38,39 +44,106 @@ class _QrScanCheckInScreenState extends State<QrScanCheckInScreen> with WidgetsB
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      // Pause camera when app not active
-      _controller.stop();
-    } else if (state == AppLifecycleState.resumed) {
-      // Resume camera when returning
-      _controller.start();
+    // Don't try to control before permissions are granted
+    if (!_controller.value.hasCameraPermission) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _subscription ??= _controller.barcodes.listen(_onBarcode);
+        unawaited(_controller.start());
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        unawaited(_subscription?.cancel());
+        _subscription = null;
+        unawaited(_controller.stop());
+        break;
     }
   }
 
-  Future<void> _onDetect(BarcodeCapture cap) async {
-    if (_processing) return;
-    if (cap.barcodes.isEmpty) return;
-    final code = cap.barcodes.first.rawValue;
-    if (code == null) return;
-
+  void _onBarcode(BarcodeCapture capture) async {
+    if (_processing || _handled) return;
+    final first = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
+    final code = first?.rawValue;
+    if (code == null || code.isEmpty) return;
+    if (!mounted) return;
     setState(() {
       _processing = true;
-      _result = null;
+      _errorText = null;
     });
-
     try {
-      final data = await repo.checkIn(qrToken: code);
-      setState(() => _result = 'Sukses check-in: ${data['status']}');
-      if (mounted) {
-        // Tampilkan info singkat lalu kembali ke Home
-        await Future.delayed(const Duration(milliseconds: 600));
-        if (!mounted) return;
-        Navigator.of(context).pop(); // kembali ke halaman sebelumnya (Home)
+      await repo.checkIn(qrToken: code);
+      _handled = true;
+      await _controller.stop(); // release camera before navigation
+      if (!mounted) return;
+      // Navigate immediately without showing an intermediate screen
+      if (widget.onSuccessNavigateHome != null) {
+        widget.onSuccessNavigateHome!.call();
+      } else {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
-      setState(() => _result = 'Gagal check-in: $e');
-    } finally {
-      setState(() => _processing = false);
+      // Detect duplicate/already-checked scenarios and show the requested warning
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        final msg = () {
+          if (data is Map) {
+            final m = data['message'] ?? data['error'] ?? data['msg'];
+            return m?.toString();
+          }
+          if (data is String) return data;
+          return null;
+        }();
+        final lower = (msg ?? '').toLowerCase();
+        final looksDuplicate = status == 409 ||
+            lower.contains('already') ||
+            lower.contains('sudah') ||
+            lower.contains('duplicate') ||
+            lower.contains('hari ini');
+
+        if (looksDuplicate) {
+          _handled = true;
+          // Stop camera and warn the user, then leave immediately
+          await _controller.stop();
+          if (!mounted) return;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Peringatan'),
+              content: const Text(
+                'Anda sudah melakukan absensi hari ini. Silahkan lakukan absensi lagi di hari selanjutnya.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          if (!mounted) return;
+          if (widget.onSuccessNavigateHome != null) {
+            widget.onSuccessNavigateHome!.call();
+          } else {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          }
+          return;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _processing = false;
+        _errorText = 'Gagal check-in: $e';
+      });
+      // allow trying again for non-duplicate errors
+      await _controller.start();
     }
   }
 
@@ -83,7 +156,7 @@ class _QrScanCheckInScreenState extends State<QrScanCheckInScreen> with WidgetsB
           IconButton(
             tooltip: 'Flash',
             onPressed: () async {
-              try { await _controller.toggleTorch(); } catch (_) {}
+              await _controller.toggleTorch();
               setState(() {});
             },
             icon: const Icon(Icons.flash_on),
@@ -91,86 +164,58 @@ class _QrScanCheckInScreenState extends State<QrScanCheckInScreen> with WidgetsB
           IconButton(
             tooltip: 'Switch Camera',
             onPressed: () async {
-              try { await _controller.switchCamera(); } catch (_) {}
+              await _controller.switchCamera();
               setState(() {});
             },
             icon: const Icon(Icons.cameraswitch),
           ),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child: MobileScanner(
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MobileScanner(
                   controller: _controller,
-                  fit: BoxFit.cover,
-                  onDetect: _onDetect,
-                  errorBuilder: (context, error, child) {
-                    _cameraError = error.toString();
-                    return Container(
-                      color: Colors.black,
-                      alignment: Alignment.center,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 48),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Kamera tidak tersedia atau gagal diinisialisasi.',
-                              style: const TextStyle(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                            if (_cameraError != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                _cameraError!,
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: () async {
-                                try { await _controller.start(); } catch (_) {}
-                                setState(() { _cameraError = null; });
-                              },
-                              child: const Text('Coba Lagi'),
-                            ),
-                          ],
+                  onDetect: _onBarcode,
+                ),
+                // Simple overlay similar to previous
+                IgnorePointer(
+                  child: Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.75,
+                      height: MediaQuery.of(context).size.width * 0.75,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 4,
                         ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-              if (_result != null)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(_result!),
-                ),
-            ],
+              ],
+            ),
           ),
           if (_processing)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black45,
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 12),
-                    Text(
-                      'Memproses check-in...',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(width: 8),
+                  Text('Memproses check-in...'),
+                ],
               ),
+            ),
+          if (_errorText != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(_errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
         ],
       ),
