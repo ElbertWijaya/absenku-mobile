@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../attendance/data/attendance_repository.dart';
 
@@ -73,6 +74,44 @@ class _QrScanCheckInScreenState extends State<QrScanCheckInScreen>
       _errorText = null;
     });
     try {
+      // 1) Prevent duplicate attendance by checking today's logs first
+      try {
+        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final logs = await repo.myLogs(start: today, end: today);
+        if (logs.isNotEmpty) {
+          _handled = true;
+          await _controller.stop();
+          if (!mounted) return;
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Peringatan'),
+              content: const Text(
+                'Anda sudah melakukan absensi hari ini. Silahkan lakukan absensi lagi di hari selanjutnya.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          if (!mounted) return;
+          if (widget.onSuccessNavigateHome != null) {
+            widget.onSuccessNavigateHome!.call();
+          } else {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          }
+          return; // stop here, no check-in call
+        }
+      } catch (_) {
+        // If pre-check fails, continue to server-side enforcement below
+      }
+
+      // 2) Proceed to check-in; server should also prevent duplicates
       await repo.checkIn(qrToken: code);
       _handled = true;
       await _controller.stop(); // release camera before navigation

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme_controller.dart';
 import '../data/profile_repository.dart';
 
 class ProfileAdminScreen extends StatefulWidget {
@@ -23,7 +24,7 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
   final fullNameC = TextEditingController();
   final phoneC = TextEditingController();
 
-  String themePref = 'system'; // system | light | dark (dummy)
+  String themePref = 'system'; // system | light | dark
   final repo = ProfileRepository();
   bool _loading = false;
   String? _error;
@@ -32,6 +33,15 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
   void initState() {
     super.initState();
     _loadMe();
+    // initialize themePref from controller
+    final mode = ThemeController.instance.mode;
+    setState(() {
+      themePref = switch (mode) {
+        ThemeMode.light => 'light',
+        ThemeMode.dark => 'dark',
+        ThemeMode.system => 'system',
+      };
+    });
   }
 
   @override
@@ -73,11 +83,12 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
       );
 
   Widget _readonlyField(String label, String value, {bool canCopy = false}) {
+    final cs = Theme.of(context).colorScheme;
     return ListTile(
       dense: true,
       visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      title: Text(label, style: const TextStyle(color: Colors.black54)),
+      title: Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
       subtitle: Text(value.isEmpty ? '-' : value),
       trailing: canCopy
           ? IconButton(
@@ -103,12 +114,13 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
     required VoidCallback onCancel,
     TextInputType? keyboardType,
   }) {
+    final cs = Theme.of(context).colorScheme;
     if (!editing) {
       return ListTile(
         dense: true,
         visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(label, style: const TextStyle(color: Colors.black54)),
+        title: Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
         subtitle: Text((controller.text).isEmpty ? '-' : controller.text),
         trailing: IconButton(
           icon: const Icon(Icons.edit),
@@ -122,7 +134,7 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.black54)),
+          Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
           const SizedBox(height: 4),
           TextField(
             controller: controller,
@@ -283,12 +295,12 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(fullName.isEmpty ? username : fullName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(fullName.isEmpty ? username : fullName,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 1),
                       Text(
                         '$email  •  @${username.isEmpty ? '-' : username}',
-                        style: const TextStyle(color: Colors.black54),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -361,7 +373,7 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
             ListTile(
               dense: true,
               visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
-              title: const Text('Tema', style: TextStyle(color: Colors.black54)),
+              title: Text('Tema', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: SegmentedButton<String>(
@@ -371,7 +383,21 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
                     ButtonSegment(value: 'dark', label: Text('Gelap'), icon: Icon(Icons.dark_mode)),
                   ],
                   selected: {themePref},
-                  onSelectionChanged: (v) => setState(() => themePref = v.first),
+                  onSelectionChanged: (v) async {
+                    final selected = v.first;
+                    setState(() => themePref = selected);
+                    final controller = ThemeController.instance;
+                    switch (selected) {
+                      case 'light':
+                        await controller.setMode(ThemeMode.light);
+                        break;
+                      case 'dark':
+                        await controller.setMode(ThemeMode.dark);
+                        break;
+                      default:
+                        await controller.setMode(ThemeMode.system);
+                    }
+                  },
                 ),
               ),
             ),
