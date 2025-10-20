@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import Bonjour from 'bonjour-service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -36,6 +37,17 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`Server running on http://0.0.0.0:${port}`);
+
+  // Advertise via mDNS/Bonjour on LAN for auto-discovery by mobile apps
+  try {
+    const bonjour = new Bonjour();
+    bonjour.publish({ name: 'absenku-backend', type: 'absenku', port });
+    // eslint-disable-next-line no-console
+    console.log('mDNS service published: _absenku._tcp');
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to publish mDNS service', e);
+  }
 }
 
 bootstrap();
