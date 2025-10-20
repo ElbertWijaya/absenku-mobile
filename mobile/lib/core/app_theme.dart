@@ -35,7 +35,7 @@ ThemeData buildDarkTheme(Color seed) {
   final base = ThemeData(useMaterial3: true, colorSchemeSeed: seed, brightness: Brightness.dark);
   final cs = base.colorScheme;
   return base.copyWith(
-    scaffoldBackgroundColor: cs.background,
+    scaffoldBackgroundColor: cs.surface,
     listTileTheme: ListTileThemeData(
       iconColor: cs.onSurfaceVariant,
       textColor: cs.onSurface,

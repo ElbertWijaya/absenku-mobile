@@ -68,6 +68,10 @@ export class AttendanceService {
     const { qr_token } = body ?? {};
     if (!qr_token) throw new BadRequestException('qr_token is required');
     const { now, utcMs, y, m, day, dateStr } = this.getNowWIB();
+    // Load user with employee relation
+    const user = await this.usersRepo.findOne({ where: { id: userId }, relations: ['employee'] });
+    if (!user) throw new UnauthorizedException('User not found');
+
     // Validate qr_token
     try {
       const payload: any = this.jwt.verify(qr_token);
@@ -77,20 +81,36 @@ export class AttendanceService {
         const todayStr = dateStr;
         if (payload.wd !== todayStr) throw new UnauthorizedException('QR expired for today');
       }
+      // Extract location from token if provided (supports loc or location_id keys)
+      const fromToken = Number(payload?.loc ?? payload?.location_id);
+      if (!Number.isNaN(fromToken) && fromToken > 0) {
+        (body as any)._location_id_from_token = fromToken;
+      }
     } catch (e) {
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('QR invalid or expired');
     }
     const work_date = dateStr;
 
-    // Prevent duplicate open check-in for same user & date
-    const existingOpen = await this.logsRepo.findOne({ where: { user_id: userId, work_date, check_out_at: IsNull() }, order: { id: 'DESC' } });
-    if (existingOpen) {
+    // Determine employee and location
+    const employeeId: string | null = (user.employee as any)?.id ?? null;
+    const location_id: number = (body as any)._location_id_from_token
+      ?? (user.employee as any)?.default_location_id
+      ?? 1;
+
+    // Prevent duplicate check-in on same day
+    const existingAny = await this.logsRepo.findOne({
+      where: employeeId
+        ? { employee_id: employeeId, work_date }
+        : { user_id: userId, work_date },
+      order: { id: 'DESC' },
+    });
+    if (existingAny) {
       return {
         message: 'Already checked in',
-        status: existingOpen.status,
-        work_date: existingOpen.work_date,
-        location_id: existingOpen.location_id,
+        status: existingAny.status,
+        work_date: existingAny.work_date,
+        location_id: existingAny.location_id,
       };
     }
   // Determine status based on WIB cutoff from env (default 09:15)
@@ -99,9 +119,9 @@ export class AttendanceService {
     const lateMinutes = isOnTime ? 0 : Math.max(0, Math.floor((utcMs - onTimeCutoffUtc) / 60000));
     const log = this.logsRepo.create({
       user_id: userId,
-      employee_id: null,
+      employee_id: employeeId,
       work_date,
-  location_id: 1,
+      location_id,
       check_in_at: now as any,
       status: (isOnTime ? 'on_time' : 'late') as any,
       late_minutes: lateMinutes,

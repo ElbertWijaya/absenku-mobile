@@ -17,6 +17,7 @@
     "seed:admin": "ts-node --transpile-only -r reflect-metadata src/seed-admin.ts",
     "seed:users": "ts-node --transpile-only -r reflect-metadata src/seed-users.ts",
     "seed:roles": "ts-node --transpile-only -r reflect-metadata src/seed-roles.ts",
+  "seed:sample": "ts-node --transpile-only -r reflect-metadata src/seed-sample-data.ts",
     "db:list-users": "ts-node --transpile-only -r reflect-metadata src/scripts/list-users.ts",
     "db:audit-accounts": "ts-node --transpile-only -r reflect-metadata src/scripts/audit-accounts.ts",
     "db:fix-accounts": "ts-node --transpile-only -r reflect-metadata src/scripts/audit-accounts.ts --fix"
