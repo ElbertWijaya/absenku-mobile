@@ -100,7 +100,7 @@ class _MyAttendanceScreenState extends State<MyAttendanceScreen> {
                         ? 'OUT: '
                         : 'OUT: $outTime WIB';
                     return ListTile(
-                      title: Text('Tanggal: ${_fmtDateLocal(date)} | Shift: ${it['shift_id']} | Lokasi: ${it['location_id']}'),
+                      title: Text('Tanggal: ${_fmtDateLocal(date)} | Lokasi: ${it['location_id']}'),
                       subtitle: Text('IN: $inTime WIB\n$outLine'),
                     );
                   },

@@ -15,9 +15,6 @@ export class AttendanceLog {
   work_date: string; // yyyy-MM-dd
 
   @Column({ type: 'int', unsigned: true })
-  shift_id: number;
-
-  @Column({ type: 'int', unsigned: true })
   location_id: number;
 
   @Column({ type: 'datetime' })

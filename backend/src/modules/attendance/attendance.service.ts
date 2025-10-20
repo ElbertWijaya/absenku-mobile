@@ -90,7 +90,6 @@ export class AttendanceService {
         message: 'Already checked in',
         status: existingOpen.status,
         work_date: existingOpen.work_date,
-        shift_id: existingOpen.shift_id,
         location_id: existingOpen.location_id,
       };
     }
@@ -102,14 +101,13 @@ export class AttendanceService {
       user_id: userId,
       employee_id: null,
       work_date,
-  shift_id: 1,
   location_id: 1,
       check_in_at: now as any,
       status: (isOnTime ? 'on_time' : 'late') as any,
       late_minutes: lateMinutes,
     });
     await this.logsRepo.save(log);
-    return { status: log.status, work_date: log.work_date, shift_id: log.shift_id, location_id: log.location_id, message: 'Checked in' };
+    return { status: log.status, work_date: log.work_date, location_id: log.location_id, message: 'Checked in' };
   }
 
   async checkOut(userId: string) {
@@ -152,7 +150,6 @@ export class AttendanceService {
         'log.user_id as user_id',
         'u.email as user_email',
         'log.work_date as work_date',
-        'log.shift_id as shift_id',
         'log.location_id as location_id',
         'log.check_in_at as check_in_at',
         'log.check_out_at as check_out_at',

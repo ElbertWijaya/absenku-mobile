@@ -14,7 +14,7 @@ tags:
   - name: QR
   - name: Attendance
   - name: Employees
-  - name: Shifts
+  # Shifts removed
   - name: Schedules
   - name: Reports
   - name: Payroll
@@ -73,7 +73,7 @@ components:
         join_date: { type: string, format: date, nullable: true }
         is_active: { type: boolean }
         default_location_id: { type: integer, nullable: true }
-        default_shift_id: { type: integer, nullable: true }
+  # default_shift_id removed
         base_salary_rate: { type: number, nullable: true }
     Shift:
       type: object
@@ -89,7 +89,7 @@ components:
       properties:
         id: { type: integer }
         employee_id: { type: integer }
-        shift_id: { type: integer }
+  # shift_id removed
         location_id: { type: integer, nullable: true }
         work_date: { type: string, format: date }
         status: { type: string, enum: [planned, completed, absent] }
@@ -98,7 +98,7 @@ components:
       properties:
         token: { type: string, description: 'JWT QR, HS256' }
         expires_at: { type: string, format: date-time }
-        shift_id: { type: integer }
+  # shift_id removed
         location_id: { type: integer }
     CheckInRequest:
       type: object
@@ -135,10 +135,10 @@ components:
         status: { type: string, enum: [on_time, late, absent_partial], nullable: true }
     EmployeeDefaultsRequest:
       type: object
-      required: [default_location_id, default_shift_id]
+  required: [default_location_id]
       properties:
         default_location_id: { type: integer }
-        default_shift_id: { type: integer }
+  # default_shift_id removed
     ReportAttendanceItem:
       type: object
       properties:
@@ -298,17 +298,14 @@ paths:
       security: [{ bearerAuth: [] }]
       summary: Ambil QR token aktif (admin display)
       description: >
-        Mengembalikan QR JWT untuk location_id + shift_id. Token dirotasi
+  Mengembalikan QR JWT untuk location_id. Token dirotasi
         berkala sesuai konfigurasi.
       parameters:
         - in: query
           name: location_id
           required: true
           schema: { type: integer }
-        - in: query
-          name: shift_id
-          required: true
-          schema: { type: integer }
+        # shift_id param removed
       responses:
         '200':
           description: OK
@@ -327,10 +324,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [location_id, shift_id]
+              required: [location_id]
               properties:
                 location_id: { type: integer }
-                shift_id: { type: integer }
+                # shift_id removed
       responses:
         '201':
           description: Created
@@ -344,7 +341,7 @@ paths:
       security: [{ bearerAuth: [] }]
       summary: Check-in dengan QR
       description: >
-        Server memvalidasi token QR (location_id, shift_id), jadwal/shift karyawan,
+  Server memvalidasi token QR (location_id), jadwal karyawan,
         anti-replay, window waktu, dan geofencing jika diaktifkan.
       requestBody:
         required: true
@@ -471,19 +468,7 @@ paths:
       responses:
         '200': { description: OK }
 
-  /shifts:
-    get:
-      tags: [Shifts]
-      security: [{ bearerAuth: [] }]
-      summary: List shift
-      responses:
-        '200': { description: OK }
-    post:
-      tags: [Shifts]
-      security: [{ bearerAuth: [] }]
-      summary: Buat shift
-      responses:
-        '201': { description: Created }
+  # /shifts removed
 
   /schedules:
     get:

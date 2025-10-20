@@ -60,54 +60,77 @@ export class UsersService {
   }
 
   async updateIdentity(userId: string, data: { full_name?: string; username?: string }): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
-    if (!user) throw new Error('User not found');
+    const saved = await this.userRepository.manager.transaction(async (tx) => {
+      const user = await tx.getRepository(User).findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
+      if (!user) throw new Error('User not found');
 
-    // Username update (with uniqueness check)
-    if (data.username !== undefined) {
-      const newUsername = (data.username ?? '').trim() || null;
-      if (newUsername) {
-        const existing = await this.userRepository.findOne({ where: { username: newUsername } });
-        if (existing && existing.id !== user.id) {
-          throw new BadRequestException('Username sudah dipakai. Silakan pilih yang lain.');
+      // Username update (with uniqueness check)
+      if (data.username !== undefined) {
+        const newUsername = (data.username ?? '').trim() || null;
+        if (newUsername) {
+          const existing = await tx.getRepository(User).findOne({ where: { username: newUsername } });
+          if (existing && existing.id !== user.id) {
+            throw new BadRequestException('Username sudah dipakai. Silakan pilih yang lain.');
+          }
+        }
+        user.username = newUsername;
+      }
+
+      // Ensure employee exists if we're going to update employee fields
+      if (data.full_name !== undefined) {
+        const fullName = (data.full_name ?? '').trim();
+        if (!user.employee) {
+          const emp = tx.getRepository(Employee).create({
+            full_name: fullName || (user.username || user.email.split('@')[0]),
+            email: user.email,
+            is_active: true,
+          });
+          user.employee = await tx.getRepository(Employee).save(emp);
+        } else {
+          user.employee.full_name = fullName || user.employee.full_name || (user.username || user.email.split('@')[0]);
+          if (!user.employee.email) user.employee.email = user.email;
+          if (user.employee.is_active === undefined || user.employee.is_active === null) user.employee.is_active = true as any;
+          await tx.getRepository(Employee).save(user.employee);
         }
       }
-      user.username = newUsername;
-    }
 
-    // Ensure employee exists if we're going to update employee fields
-    if (data.full_name !== undefined) {
-      if (!user.employee) {
-        const emp = this.employeeRepository.create({
-          full_name: data.full_name || '',
-        });
-        user.employee = await this.employeeRepository.save(emp);
-      } else {
-        user.employee.full_name = data.full_name || '';
-        await this.employeeRepository.save(user.employee);
-      }
-    }
-    await this.userRepository.save(user);
-    // Reload with relations to reflect nested updates
-    const saved = await this.findById(userId);
+      await tx.getRepository(User).save(user);
+      return await tx.getRepository(User).findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
+    });
     return saved!;
   }
 
   async updatePhone(userId: string, phone: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
-    if (!user) throw new Error('User not found');
-    if (!user.employee) {
-      const emp = this.employeeRepository.create({
-        full_name: '',
-        phone: phone || null,
-      });
-      user.employee = await this.employeeRepository.save(emp);
-    } else {
-      user.employee.phone = phone || null;
-      await this.employeeRepository.save(user.employee);
+    // normalize phone: keep digits and leading +
+    const normalized = (phone ?? '')
+      .trim()
+      .replace(/[^+\d]/g, '')
+      .replace(/(?!^)[+]/g, '');
+    if (normalized && !/^\+?\d{7,15}$/.test(normalized)) {
+      throw new BadRequestException('Nomor telepon tidak valid. Gunakan format internasional, mis. +628123456789.');
     }
-    await this.userRepository.save(user);
-    const saved = await this.findById(userId);
+
+    const saved = await this.userRepository.manager.transaction(async (tx) => {
+      const user = await tx.getRepository(User).findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
+      if (!user) throw new Error('User not found');
+      if (!user.employee) {
+        const emp = tx.getRepository(Employee).create({
+          full_name: user.username || user.email.split('@')[0],
+          phone: normalized || null,
+          email: user.email,
+          is_active: true,
+        });
+        user.employee = await tx.getRepository(Employee).save(emp);
+      } else {
+        user.employee.phone = normalized || null;
+        if (!user.employee.full_name) user.employee.full_name = user.username || user.email.split('@')[0];
+        if (!user.employee.email) user.employee.email = user.email;
+        if (user.employee.is_active === undefined || user.employee.is_active === null) user.employee.is_active = true as any;
+        await tx.getRepository(Employee).save(user.employee);
+      }
+      await tx.getRepository(User).save(user);
+      return await tx.getRepository(User).findOne({ where: { id: userId }, relations: ['employee', 'roles'] });
+    });
     return saved!;
   }
 }

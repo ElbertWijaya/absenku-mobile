@@ -40,7 +40,4 @@ export class Employee {
 
   @Column({ type: 'int', unsigned: true, nullable: true })
   default_location_id: number | null;
-
-  @Column({ type: 'int', unsigned: true, nullable: true })
-  default_shift_id: number | null;
 }
