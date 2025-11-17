@@ -157,6 +157,30 @@ export class AttendanceService {
     return this.logsRepo.find({ where, order: { id: 'DESC' } });
   }
 
+  async myToday(userId: string) {
+    const { dateStr } = this.getNowWIB();
+    const log = await this.logsRepo.findOne({
+      where: { user_id: userId, work_date: dateStr },
+      order: { id: 'DESC' },
+    });
+    if (log) {
+      return {
+        id: log.id,
+        user_id: log.user_id,
+        employee_id: log.employee_id,
+        work_date: log.work_date,
+        location_id: log.location_id,
+        check_in_at: log.check_in_at,
+        check_out_at: log.check_out_at,
+        late_minutes: log.late_minutes,
+        work_minutes: log.work_minutes,
+        status: log.status,
+      };
+    } else {
+      return {};
+    }
+  }
+
   async reportByDay(date: string) {
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new BadRequestException('date is required (yyyy-MM-dd)');
@@ -414,5 +438,103 @@ export class AttendanceService {
     // Sort by name asc
     items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return items;
+  }
+
+  async adminSummary(date: string) {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('date is required (yyyy-MM-dd)');
+    }
+    // Get all users with role EMPLOYEE
+    const employees = await this.usersRepo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.roles', 'r')
+      .leftJoinAndSelect('u.employee', 'e')
+      .where('r.name = :rn', { rn: 'EMPLOYEE' })
+      .getMany();
+
+    if (employees.length === 0) {
+      return {
+        hadir: 0,
+        telat: 0,
+        absen: 0,
+        lateItems: [],
+        pendingItems: [],
+        absentItems: [],
+      };
+    }
+
+    const userIds = employees.map((u) => u.id);
+
+    // Fetch attendance per user for that date (latest log per user)
+    const logs = await this.logsRepo
+      .createQueryBuilder('log')
+      .innerJoin(
+        (qb) =>
+          qb
+            .from(AttendanceLog, 'l2')
+            .select('l2.user_id', 'user_id')
+            .addSelect('MAX(l2.id)', 'max_id')
+            .where('l2.user_id IN (:...ids)', { ids: userIds })
+            .andWhere('l2.work_date = :date', { date })
+            .groupBy('l2.user_id'),
+        'last',
+        'last.max_id = log.id',
+      )
+      .getMany();
+
+    const logByUser = new Map<string, AttendanceLog | undefined>();
+    for (const l of logs) logByUser.set(l.user_id, l);
+
+    let hadir = 0;
+    let telat = 0;
+    let absen = 0;
+    const lateItems: any[] = [];
+    const pendingItems: any[] = [];
+    const absentItems: any[] = [];
+
+    for (const u of employees) {
+      const log = logByUser.get(u.id);
+      if (log) {
+        if (log.status === 'late' || (log.late_minutes ?? 0) > 0) {
+          telat++;
+          lateItems.push({
+            name: u.employee?.full_name ?? u.username ?? u.email,
+            email: u.email,
+            check_in_at: log.check_in_at,
+          });
+        } else {
+          hadir++;
+        }
+      } else {
+        absen++;
+        absentItems.push({
+          name: u.employee?.full_name ?? u.username ?? u.email,
+          email: u.email,
+        });
+      }
+    }
+
+    // Pending items: for today, if before cutoff, those without check-in are pending
+    const nowW = this.getNowWIB();
+    const todayStr = nowW.dateStr;
+    const isToday = date === todayStr;
+    const cutoffUtc = this.wibTimeToUtcMs(nowW.y, nowW.m, nowW.day, this.absentHM.h, this.absentHM.m);
+    const cutoffPassed = nowW.utcMs >= cutoffUtc;
+
+    if (isToday && !cutoffPassed) {
+      // Move absent to pending
+      pendingItems.push(...absentItems);
+      absentItems.length = 0;
+      absen = 0;
+    }
+
+    return {
+      hadir,
+      telat,
+      absen,
+      lateItems,
+      pendingItems,
+      absentItems,
+    };
   }
 }

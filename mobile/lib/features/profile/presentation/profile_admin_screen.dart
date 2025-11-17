@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme_controller.dart';
 import '../data/profile_repository.dart';
+import '../../auth/data/auth_repository.dart';
 
 class ProfileAdminScreen extends StatefulWidget {
   const ProfileAdminScreen({super.key});
@@ -11,6 +12,7 @@ class ProfileAdminScreen extends StatefulWidget {
 }
 
 class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
+    final _authRepo = AuthRepository();
   // Mock data (dummy)
   String email = '...';
   String username = '';
@@ -462,6 +464,28 @@ class _ProfileAdminScreenState extends State<ProfileAdminScreen> {
               title: Text('Versi aplikasi', style: TextStyle(color: Colors.black54)),
               subtitle: Text('v1.0.0+1'),
             ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
+                onPressed: () async {
+                  await _authRepo.logout();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Berhasil logout/token dihapus.')),
+                    );
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             if (_loading) const Padding(
               padding: EdgeInsets.only(top: 12),

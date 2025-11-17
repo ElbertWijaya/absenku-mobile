@@ -2,6 +2,12 @@ import 'package:dio/dio.dart';
 import '../../../core/dio_client.dart';
 
 class AttendanceRepository {
+    // Admin summary for today (dummy/mock, replace with real API call as needed)
+    Future<Map<String, dynamic>> adminTodaySummary({required String date}) async {
+      // Example: fetch from /attendance/admin-summary?date=yyyy-MM-dd
+      final res = await _dio.get('/attendance/admin-summary', queryParameters: {'date': date});
+      return Map<String, dynamic>.from(res.data);
+    }
   final Dio _dio = DioClient().dio;
 
   Future<Map<String, dynamic>> checkIn({

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/dio_client.dart';
 import '../qr/presentation/qr_generator_screen.dart';
 import '../profile/presentation/profile_admin_screen.dart';
+import '../profile/presentation/profile_employee_screen.dart';
 import '../attendance/presentation/admin_day_report_detail_screen.dart';
 import '../attendance/data/attendance_repository.dart';
 
@@ -41,7 +42,11 @@ class _RoleShellState extends State<RoleShell> {
           if (isAdmin) return const QrGeneratorScreen();
           return _HomeTab(isAdmin: false);
         default:
-          return const ProfileAdminScreen();
+          if (isAdmin) {
+            return const ProfileAdminScreen();
+          } else {
+            return const ProfileEmployeeScreen();
+          }
       }
     }
     final items = <BottomNavigationBarItem>[
@@ -79,6 +84,7 @@ class _HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<_HomeTab> {
   final Dio _dio = DioClient().dio;
+  final AttendanceRepository _attRepo = AttendanceRepository();
   bool _loading = false;
   String? _error;
   int _hadir = 0;
@@ -87,6 +93,15 @@ class _HomeTabState extends State<_HomeTab> {
   final List<Map<String, dynamic>> _lateItems = [];
   final List<Map<String, dynamic>> _pendingItems = [];
   final List<Map<String, dynamic>> _absentItems = [];
+
+  // Employee state
+  bool _myLoading = false;
+  String? _myError;
+  Map<String, dynamic>? _myToday;
+  List<Map<String, dynamic>> _recentLogs = [];
+  int _monthPresent = 0;
+  int _monthLate = 0;
+  Timer? _ticker;
 
   @override
   void initState() {
@@ -98,253 +113,201 @@ class _HomeTabState extends State<_HomeTab> {
     }
   }
 
-  // use existing _todayWIB defined above for admin, no duplicate here
-
+  // Fetch and update admin dashboard data
   Future<void> _loadToday() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final dateStr = _todayWIB();
-      final res = await _dio.get('/attendance/report/rollcall', queryParameters: {'date': dateStr});
-      int hadir = 0, telat = 0, absen = 0;
-      _lateItems.clear();
-      _pendingItems.clear();
-      _absentItems.clear();
-      final list = (res.data as List).cast<dynamic>();
-      for (final e in list) {
-        final m = Map<String, dynamic>.from(e as Map);
-        final status = (m['status'] ?? '') as String;
-        if (status == 'HADIR') {
-          hadir++;
-        } else if (status == 'TELAT') {
-          telat++;
-          _lateItems.add(m);
-        } else if (status == 'ABSEN') {
-          absen++;
-          _absentItems.add(m);
-        } else {
-          // '-': belum diputuskan sebelum cutoff 16:30 WIB
-          _pendingItems.add(m);
-        }
-      }
+      final now = DateTime.now().toUtc().add(const Duration(hours: 7));
+      String pad2(int n) => n.toString().padLeft(2, '0');
+      final today = '${now.year}-${pad2(now.month)}-${pad2(now.day)}';
+      final summary = await _attRepo.adminTodaySummary(date: today);
       setState(() {
-        _hadir = hadir;
-        _telat = telat;
-        _absen = absen;
+        _hadir = summary['hadir'] ?? 0;
+        _telat = summary['telat'] ?? 0;
+        _absen = summary['absen'] ?? 0;
+        _lateItems
+          ..clear()
+          ..addAll(List<Map<String, dynamic>>.from(summary['lateItems'] ?? []));
+        _pendingItems
+          ..clear()
+          ..addAll(List<Map<String, dynamic>>.from(summary['pendingItems'] ?? []));
+        _absentItems
+          ..clear()
+          ..addAll(List<Map<String, dynamic>>.from(summary['absentItems'] ?? []));
+        _loading = false;
       });
-    } on DioException catch (e) {
-      final status = e.response?.statusCode ?? 0;
-      if (status == 401) {
-        if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
-      } else {
-        setState(() => _error = 'Gagal memuat ringkasan: ${e.message}');
-      }
     } catch (e) {
-      setState(() => _error = 'Gagal memuat ringkasan: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
-  // ===================== Employee (non-admin) helpers =====================
-  final AttendanceRepository _attRepo = AttendanceRepository();
-  bool _myLoading = false;
-  String? _myError;
-  Map<String, dynamic>? _myToday; // latest log for today if any
-  List<Map<String, dynamic>> _recentLogs = const [];
-  // month stats
-  int _monthPresent = 0;
-  int _monthLate = 0;
-  // live ticker for open work duration
-  Timer? _ticker;
-
-  DateTime _nowWIB() => DateTime.now().toUtc().add(const Duration(hours: 7));
-  String _greetingWIB() {
-    final h = _nowWIB().hour;
-    if (h < 11) return 'Selamat pagi';
-    if (h < 15) return 'Selamat siang';
-    if (h < 18) return 'Selamat sore';
-    return 'Selamat malam';
-  }
-  String _dateTimeWIBLabel() {
-    final w = _nowWIB();
-    final dateStr = DateFormat('EEEE, dd MMM yyyy', 'id_ID').format(w);
-    final timeStr = DateFormat('HH:mm', 'id_ID').format(w);
-    return '$dateStr, $timeStr WIB';
-  }
-  int _workdaysSoFarInMonth() {
-    final w = _nowWIB();
-    final first = DateTime(w.year, w.month, 1);
-    int count = 0;
-    for (int d = 0; d <= w.day - 1; d++) {
-      final day = first.add(Duration(days: d));
-      final wd = day.weekday; // 1=Mon..7=Sun
-      if (wd >= DateTime.monday && wd <= DateTime.friday) count++;
-    }
-    return count;
-  }
-
-  String _todayWIB() {
-    final nowWib = DateTime.now().toUtc().add(const Duration(hours: 7));
-    String pad2(int n) => n.toString().padLeft(2, '0');
-    return '${nowWib.year}-${pad2(nowWib.month)}-${pad2(nowWib.day)}';
-  }
-
-  Future<void> _loadMyToday() async {
+  Future<void> _refreshEmployee() async {
     setState(() {
       _myLoading = true;
       _myError = null;
     });
     try {
-      final dd = _todayWIB();
-      final logs = await _attRepo.myLogs(start: dd, end: dd);
-      // choose the latest by id/created order as returned (repo orders DESC by id in backend)
+      final now = DateTime.now().toUtc().add(const Duration(hours: 7));
+      String pad2(int n) => n.toString().padLeft(2, '0');
+      final today = '${now.year}-${pad2(now.month)}-${pad2(now.day)}';
+      final response = await _dio.get('/attendance/my-today');
+      final data = response.data as Map<String, dynamic>;
       setState(() {
-        _myToday = logs.isNotEmpty ? logs.first : null;
+        _myToday = data['today'];
+        _recentLogs = List<Map<String, dynamic>>.from(data['recent'] ?? []);
+        _monthPresent = data['monthPresent'] ?? 0;
+        _monthLate = data['monthLate'] ?? 0;
+        _myLoading = false;
       });
-    } on DioException catch (e) {
-      final status = e.response?.statusCode ?? 0;
-      if (status == 401) {
-        if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
-      } else {
-        setState(() => _myError = 'Gagal memuat status hari ini: ${e.message}');
-      }
     } catch (e) {
-      setState(() => _myError = 'Gagal memuat status hari ini: $e');
-    } finally {
-      if (mounted) setState(() => _myLoading = false);
-    }
-  }
-
-  Future<void> _loadMyRecent() async {
-    try {
-      final now = DateTime.now().toUtc().add(const Duration(hours: 7));
-      final startDt = now.subtract(const Duration(days: 14));
-      String pad2(int n) => n.toString().padLeft(2, '0');
-      final start = '${startDt.year}-${pad2(startDt.month)}-${pad2(startDt.day)}';
-      final end = '${now.year}-${pad2(now.month)}-${pad2(now.day)}';
-      final logs = await _attRepo.myLogs(start: start, end: end);
       setState(() {
-        _recentLogs = logs.take(5).toList();
-      });
-    } catch (_) {
-      // ignore recent load errors; main status already shows an error if needed
-    }
-  }
-
-  Future<void> _refreshEmployee() async {
-    await _loadMyToday();
-    await _loadMyRecent();
-    await _loadMyMonthStats();
-    _setupTicker();
-  }
-
-  Future<void> _loadMyMonthStats() async {
-  // no loading spinner for month stats (lightweight)
-    try {
-      final now = DateTime.now().toUtc().add(const Duration(hours: 7));
-      final startDt = DateTime(now.year, now.month, 1);
-      String pad2(int n) => n.toString().padLeft(2, '0');
-      final start = '${startDt.year}-${pad2(startDt.month)}-${pad2(startDt.day)}';
-      final end = '${now.year}-${pad2(now.month)}-${pad2(now.day)}';
-      final logs = await _attRepo.myLogs(start: start, end: end);
-      // deduplicate by work_date (take latest per day), then count on_time vs late
-      final Map<String, Map<String, dynamic>> byDate = {};
-      for (final m in logs) {
-        final wd = (m['work_date'] ?? '') as String?;
-        if (wd == null || wd.isEmpty) continue;
-        byDate.putIfAbsent(wd, () => m);
-      }
-      int present = 0;
-      int late = 0;
-      byDate.forEach((_, v) {
-        present += 1;
-        final isLate = (v['status'] == 'late') || ((v['late_minutes'] ?? 0) as int) > 0;
-        if (isLate) late += 1;
-      });
-      setState(() {
-        _monthPresent = present;
-        _monthLate = late;
-      });
-    } catch (_) {
-      // ignore errors silently for month stats
-    } finally {}
-  }
-
-  void _setupTicker() {
-    _ticker?.cancel();
-    final log = _myToday;
-    if (log != null && log['check_in_at'] != null && log['check_out_at'] == null) {
-      // update every minute
-      _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
-        if (mounted) setState(() {});
+        _myError = e.toString();
+        _myLoading = false;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
   }
 
   Future<void> _doCheckOut() async {
-    setState(() => _myLoading = true);
     try {
-      await _attRepo.checkOut();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Berhasil check-out')));
-      }
-    } on DioException catch (e) {
-      final msg = e.response?.data is Map && (e.response!.data['message'] is String)
-          ? e.response!.data['message'] as String
-          : e.message ?? 'Gagal check-out';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal check-out: $msg')));
-      }
+      await _dio.post('/attendance/check-out');
+      await _refreshEmployee();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal check-out: $e')));
-      }
-    } finally {
-      await _loadMyToday();
+      setState(() {
+        _myError = e.toString();
+      });
     }
   }
 
-  Widget _kpiCard({required String title, required int count, required Color color, IconData? icon}) {
-    return Expanded(
-      child: Card(
-        elevation: 0,
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) Icon(icon, size: 16, color: color.withOpacity(0.9)),
-                  if (icon != null) const SizedBox(width: 6),
-                  Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w600)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('$count', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _greetingWIB() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 7));
+    final hour = now.hour;
+    if (hour < 12) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
+
+  String _dateTimeWIBLabel() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 7));
+    return DateFormat('EEEE, dd MMMM yyyy HH:mm', 'id_ID').format(now);
+  }
+
+  int _workdaysSoFarInMonth() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 7));
+    final firstDay = DateTime(now.year, now.month, 1);
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+    int count = 0;
+    for (int i = 1; i <= now.day; i++) {
+      final d = DateTime(now.year, now.month, i);
+      if (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
+        count++;
+      }
+    }
+    return count;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Employee home (non-admin): tetap sederhana
-    if (!widget.isAdmin) {
+    if (widget.isAdmin) {
+      // Admin dashboard content
+      final List<Map<String, dynamic>> displayedMissing = _absen > 0 ? _absentItems : _pendingItems;
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: RefreshIndicator(
+              onRefresh: _loadToday,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('Hari ini', style: TextStyle(fontWeight: FontWeight.w700)),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Muat ulang',
+                          onPressed: _loading ? null : _loadToday,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      ],
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      ),
+                    Row(
+                      children: [
+                        _kpiCard(title: 'Hadir', count: _hadir, color: Colors.green.shade700, icon: Icons.check_circle),
+                        const SizedBox(width: 8),
+                        _kpiCard(title: 'Telat', count: _telat, color: Colors.orange.shade800, icon: Icons.schedule),
+                        const SizedBox(width: 8),
+                        _kpiCard(title: 'Absen', count: _absen, color: Colors.red.shade700, icon: Icons.cancel),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.calendar_month, size: 18),
+                          label: const Text('Laporan Harian'),
+                          onPressed: () => Navigator.pushNamed(context, '/admin-report-day'),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.fact_check, size: 18),
+                          label: const Text('Rollcall Hari Ini'),
+                          onPressed: () {
+                            final w = DateTime.now().toUtc().add(const Duration(hours: 7));
+                            final d = DateTime(w.year, w.month, w.day);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => AdminDayReportDetailScreen(date: d)),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (_telat > 0) _sectionTitle('Telat ($_telat)'),
+                    if (_telat > 0)
+                      _miniList(
+                        items: _lateItems,
+                        icon: Icons.schedule,
+                        iconColor: Colors.orange.shade800,
+                        showTime: true,
+                        context: context,
+                      ),
+                    if (displayedMissing.isNotEmpty) _sectionTitle(_absen > 0 ? 'Absen ($_absen)' : 'Belum Check-in'),
+                    if (displayedMissing.isNotEmpty)
+                      _miniList(
+                        items: displayedMissing,
+                        icon: _absen > 0 ? Icons.cancel : Icons.remove_circle_outline,
+                        iconColor: _absen > 0 ? Colors.red.shade700 : Colors.grey.shade700,
+                        context: context,
+                      ),
+                    if (_loading) ...[
+                      const SizedBox(height: 24),
+                      const Center(child: CircularProgressIndicator()),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Employee home
       final log = _myToday;
       final hasCheckIn = log != null;
       final isOpen = hasCheckIn && (log['check_out_at'] == null);
@@ -370,7 +333,6 @@ class _HomeTabState extends State<_HomeTab> {
         statusText = lateMin > 0 ? 'Selesai (TELAT)' : 'Selesai (HADIR)';
         statusColor = lateMin > 0 ? Colors.orange.shade800 : Colors.green.shade700;
       }
-
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
@@ -383,265 +345,169 @@ class _HomeTabState extends State<_HomeTab> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Greeting + date/time WIB
                   Text(_greetingWIB(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                   const SizedBox(height: 4),
                   Text(_dateTimeWIBLabel(), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Status Hari Ini', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'Muat ulang',
-                      onPressed: _myLoading ? null : _refreshEmployee,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  ],
-                ),
-                if (_myError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(_myError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                  ),
-                Card(
-                  elevation: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(statusText, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: statusColor)),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.login, size: 16),
-                            const SizedBox(width: 6),
-                            Text('Check-In: ${inAt != null ? DateFormat('HH:mm').format(inAt) : '-'}'),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.logout, size: 16),
-                            const SizedBox(width: 6),
-                            Text('Check-Out: ${outAt != null ? DateFormat('HH:mm').format(outAt) : '-'}'),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.timelapse, size: 16),
-                            const SizedBox(width: 6),
-                            Text(_buildDurationLabel(inAt: inAt, outAt: outAt, rawMinutes: (_myToday?['work_minutes'] as int?) )),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (isOpen)
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _myLoading ? null : _doCheckOut,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Check-Out Sekarang'),
-                    ),
-                  )
-                else ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'Gunakan tombol Scan QR di navigation bar bawah untuk Check-In.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, '/my-attendance');
-                      if (mounted) await _refreshEmployee();
-                    },
-                    icon: const Icon(Icons.list_alt),
-                    label: const Text('Riwayat Absensi Saya'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Month summary (personal)
-                Row(
-                  children: [
-                    _miniStatCard(title: 'Hadir bln ini', value: _monthPresent, color: Colors.indigo),
-                    const SizedBox(width: 8),
-                    _miniStatCard(title: 'Telat bln ini', value: _monthLate, color: Colors.orange.shade800),
-                  ],
-                ),
-                  const SizedBox(height: 12),
-                  // Progress ring (weekdays vs present)
-                  _progressRing(),
-                const SizedBox(height: 12),
-                if (_recentLogs.isNotEmpty) ...[
-                  const Text('Riwayat Terbaru', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Card(
-                    elevation: 0,
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _recentLogs.length,
-                      itemBuilder: (ctx, i) {
-                        final it = _recentLogs[i];
-                        final ymd = (it['work_date'] ?? '') as String?;
-                        String dateLabel = '-';
-                        if (ymd != null && ymd.length >= 10) {
-                          try {
-                            final parts = ymd.substring(0, 10).split('-');
-                            final d = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-                            dateLabel = DateFormat('EEE, dd MMM yyyy', 'id_ID').format(d);
-                          } catch (_) {}
-                        }
-                        final ci = it['check_in_at'];
-                        final co = it['check_out_at'];
-                        final inAt = ci is String ? DateTime.tryParse(ci)?.toLocal() : (ci is DateTime ? ci.toLocal() : null);
-                        final outAt = co is String ? DateTime.tryParse(co)?.toLocal() : (co is DateTime ? co.toLocal() : null);
-                        final lateMin = (it['late_minutes'] ?? 0) as int;
-                        final isLate = lateMin > 0 || (it['status'] == 'late');
-                        final statusColor = isLate ? Colors.orange.shade800 : Colors.green.shade700;
-                        return ListTile(
-                          dense: true,
-                          leading: Icon(isLate ? Icons.schedule : Icons.check_circle, color: statusColor),
-                          title: Text(dateLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          subtitle: Row(
-                            children: [
-                              const Icon(Icons.login, size: 14),
-                              const SizedBox(width: 4),
-                              Text(inAt != null ? DateFormat('HH:mm').format(inAt) : '-'),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.logout, size: 14),
-                              const SizedBox(width: 4),
-                              Text(outAt != null ? DateFormat('HH:mm').format(outAt) : '-'),
-                            ],
-                          ),
-                          onTap: () async {
-                            await Navigator.pushNamed(context, '/my-attendance');
-                            if (mounted) await _refreshEmployee();
-                          },
-                        );
-                      },
-                      separatorBuilder: (ctx, i) => const Divider(height: 1),
-                    ),
-                  ),
-                ] else ...[
-                  Card(
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Belum ada riwayat dalam 14 hari terakhir.',
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ),
-                ],
-                if (_myLoading) ...[
-                  const SizedBox(height: 16),
-                  const Center(child: CircularProgressIndicator()),
-                ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Admin dashboard content
-    // Tentukan daftar yang akan ditampilkan sebagai missing/pending
-    final displayedMissing = _absen > 0 ? _absentItems : _pendingItems;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: RefreshIndicator(
-            onRefresh: _loadToday,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
                   Row(
                     children: [
-                      const Text('Hari ini', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('Status Hari Ini', style: TextStyle(fontWeight: FontWeight.w700)),
                       const Spacer(),
                       IconButton(
                         tooltip: 'Muat ulang',
-                        onPressed: _loading ? null : _loadToday,
+                        onPressed: _myLoading ? null : _refreshEmployee,
                         icon: const Icon(Icons.refresh),
                       ),
                     ],
                   ),
-                  if (_error != null)
+                  if (_myError != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      child: Text(_myError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                     ),
+                  Card(
+                    elevation: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(statusText, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: statusColor)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.login, size: 16),
+                              const SizedBox(width: 6),
+                              Text('Check-In: ${inAt != null ? DateFormat('HH:mm').format(inAt) : '-'}'),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.logout, size: 16),
+                              const SizedBox(width: 6),
+                              Text('Check-Out: ${outAt != null ? DateFormat('HH:mm').format(outAt) : '-'}'),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.timelapse, size: 16),
+                              const SizedBox(width: 6),
+                              Text(_buildDurationLabel(inAt: inAt, outAt: outAt, rawMinutes: (log?['work_minutes'] as int?))),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (isOpen)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _myLoading ? null : _doCheckOut,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Check-Out Sekarang'),
+                      ),
+                    )
+                  else ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'Gunakan tombol Scan QR di navigation bar bawah untuk Check-In.',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Navigator.pushNamed(context, '/my-attendance');
+                        if (mounted) await _refreshEmployee();
+                      },
+                      icon: const Icon(Icons.list_alt),
+                      label: const Text('Riwayat Absensi Saya'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      _kpiCard(title: 'Hadir', count: _hadir, color: Colors.green.shade700, icon: Icons.check_circle),
+                      _miniStatCard(title: 'Hadir bln ini', value: _monthPresent, color: Colors.indigo, context: context),
                       const SizedBox(width: 8),
-                      _kpiCard(title: 'Telat', count: _telat, color: Colors.orange.shade800, icon: Icons.schedule),
-                      const SizedBox(width: 8),
-                      _kpiCard(title: 'Absen', count: _absen, color: Colors.red.shade700, icon: Icons.cancel),
+                      _miniStatCard(title: 'Telat bln ini', value: _monthLate, color: Colors.orange.shade800, context: context),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.calendar_month, size: 18),
-                        label: const Text('Laporan Harian'),
-                        onPressed: () => Navigator.pushNamed(context, '/admin-report-day'),
-                      ),
-                      ActionChip(
-                        avatar: const Icon(Icons.fact_check, size: 18),
-                        label: const Text('Rollcall Hari Ini'),
-                        onPressed: () {
-                          final w = DateTime.now().toUtc().add(const Duration(hours: 7));
-                          final d = DateTime(w.year, w.month, w.day);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => AdminDayReportDetailScreen(date: d)),
+                  _progressRing(context),
+                  const SizedBox(height: 12),
+                  if (_recentLogs.isNotEmpty) ...[
+                    const Text('Riwayat Terbaru', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Card(
+                      elevation: 0,
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _recentLogs.length,
+                        itemBuilder: (ctx, i) {
+                          final it = _recentLogs[i];
+                          final ymd = (it['work_date'] ?? '') as String?;
+                          String dateLabel = '-';
+                          if (ymd != null && ymd.length >= 10) {
+                            try {
+                              final parts = ymd.substring(0, 10).split('-');
+                              final d = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+                              dateLabel = DateFormat('EEE, dd MMM yyyy', 'id_ID').format(d);
+                            } catch (_) {}
+                          }
+                          final ci = it['check_in_at'];
+                          final co = it['check_out_at'];
+                          final inAt = ci is String ? DateTime.tryParse(ci)?.toLocal() : (ci is DateTime ? ci.toLocal() : null);
+                          final outAt = co is String ? DateTime.tryParse(co)?.toLocal() : (co is DateTime ? co.toLocal() : null);
+                          final lateMin = (it['late_minutes'] ?? 0) as int;
+                          final isLate = lateMin > 0 || (it['status'] == 'late');
+                          final statusColor = isLate ? Colors.orange.shade800 : Colors.green.shade700;
+                          return ListTile(
+                            dense: true,
+                            leading: Icon(isLate ? Icons.schedule : Icons.check_circle, color: statusColor),
+                            title: Text(dateLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: Row(
+                              children: [
+                                const Icon(Icons.login, size: 14),
+                                const SizedBox(width: 4),
+                                Text(inAt != null ? DateFormat('HH:mm').format(inAt) : '-'),
+                                const SizedBox(width: 12),
+                                const Icon(Icons.logout, size: 14),
+                                const SizedBox(width: 4),
+                                Text(outAt != null ? DateFormat('HH:mm').format(outAt) : '-'),
+                              ],
+                            ),
+                            onTap: () async {
+                              await Navigator.pushNamed(context, '/my-attendance');
+                              if (mounted) await _refreshEmployee();
+                            },
                           );
                         },
+                        separatorBuilder: (ctx, i) => const Divider(height: 1),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Ringkasan cepat di bawah chips (minimalis)
-                  if (_telat > 0) _sectionTitle('Telat ($_telat)'),
-                  if (_telat > 0)
-                    _miniList(
-                      items: _lateItems,
-                      icon: Icons.schedule,
-                      iconColor: Colors.orange.shade800,
-                      showTime: true,
                     ),
-                  if (displayedMissing.isNotEmpty) _sectionTitle(_absen > 0 ? 'Absen ($_absen)' : 'Belum Check-in'),
-                  if (displayedMissing.isNotEmpty)
-                    _miniList(
-                      items: displayedMissing,
-                      icon: _absen > 0 ? Icons.cancel : Icons.remove_circle_outline,
-                      iconColor: _absen > 0 ? Colors.red.shade700 : Colors.grey.shade700,
+                  ] else ...[
+                    Card(
+                      elevation: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Belum ada riwayat dalam 14 hari terakhir.',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     ),
-                  if (_loading) ...[
-                    const SizedBox(height: 24),
+                  ],
+                  if (_myLoading) ...[
+                    const SizedBox(height: 16),
                     const Center(child: CircularProgressIndicator()),
                   ],
                 ],
@@ -649,8 +515,8 @@ class _HomeTabState extends State<_HomeTab> {
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _sectionTitle(String text) {
@@ -665,6 +531,7 @@ class _HomeTabState extends State<_HomeTab> {
     required IconData icon,
     required Color iconColor,
     bool showTime = false,
+    required BuildContext context,
   }) {
     final max = items.length > 5 ? 5 : items.length;
     return Card(
@@ -695,7 +562,6 @@ class _HomeTabState extends State<_HomeTab> {
             title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing: showTime && timeStr != null ? Text(timeStr) : null,
             onTap: () {
-              // Tap item -> buka rollcall hari ini
               final w = DateTime.now().toUtc().add(const Duration(hours: 7));
               final d = DateTime(w.year, w.month, w.day);
               Navigator.of(context).push(
@@ -725,7 +591,7 @@ class _HomeTabState extends State<_HomeTab> {
     return 'Durasi: ${h}j ${m}m';
   }
 
-  Widget _miniStatCard({required String title, required int value, required Color color}) {
+  Widget _miniStatCard({required String title, required int value, required Color color, required BuildContext context}) {
     return Expanded(
       child: Card(
         elevation: 0,
@@ -745,7 +611,7 @@ class _HomeTabState extends State<_HomeTab> {
     );
   }
 
-  Widget _progressRing() {
+  Widget _progressRing(BuildContext context) {
     final target = _workdaysSoFarInMonth();
     final present = _monthPresent;
     final pct = target == 0 ? 0.0 : (present / target).clamp(0.0, 1.0);
@@ -778,6 +644,32 @@ class _HomeTabState extends State<_HomeTab> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kpiCard({required String title, required int count, required Color color, required IconData icon}) {
+    return Expanded(
+      child: Card(
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  const SizedBox(width: 6),
+                  Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('$count', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
         ),
       ),
     );

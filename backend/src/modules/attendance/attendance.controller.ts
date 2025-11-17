@@ -26,6 +26,12 @@ export class AttendanceController {
     return this.svc.my(userId, { start, end });
   }
 
+  @Get('my-today')
+  myToday(@Req() req: any) {
+    const userId: string = req?.user?.id;
+    return this.svc.myToday(userId);
+  }
+
   // Admin report: list all attendance activity for a specific date (yyyy-MM-dd)
   @Get('report/day')
   reportByDay(@Query('date') date: string) {
@@ -36,6 +42,12 @@ export class AttendanceController {
   @Get('report/rollcall')
   rollcall(@Query('date') date: string) {
     return this.svc.rollcall(date);
+  }
+
+  // Admin summary for today: returns counts and lists for dashboard
+  @Get('admin-summary')
+  adminSummary(@Query('date') date: string) {
+    return this.svc.adminSummary(date);
   }
 
   // Admin month summary: return list of days with counts for a given month
