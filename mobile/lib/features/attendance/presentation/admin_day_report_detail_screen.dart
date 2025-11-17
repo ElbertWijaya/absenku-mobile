@@ -134,9 +134,21 @@ class _AdminDayReportDetailScreenState extends State<AdminDayReportDetailScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(
+                                  name,
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                ),
                                 if (email.isNotEmpty)
-                                  Text(email, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                                  Text(
+                                    email,
+                                    style: const TextStyle(color: Colors.black54, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: false,
+                                  ),
                                 const SizedBox(height: 8),
                                 if (isFuture)
                                   Padding(

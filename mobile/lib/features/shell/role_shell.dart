@@ -29,14 +29,9 @@ class _RoleShellState extends State<RoleShell> {
     return names.contains('admin');
   }
 
-  Future<void> _logout() async {
-    await DioClient().clearToken();
-    if (mounted) Navigator.of(context).pushReplacementNamed('/login');
-  }
-
   @override
   Widget build(BuildContext context) {
-  Widget buildBody() {
+    Widget buildBody() {
       switch (_index) {
         case 0:
           return _HomeTab(isAdmin: isAdmin);
@@ -57,15 +52,8 @@ class _RoleShellState extends State<RoleShell> {
         const BottomNavigationBarItem(icon: Icon(Icons.camera_alt), label: 'Scan QR'),
       const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
     ];
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Absenku - ${isAdmin ? 'Admin' : 'Karyawan'}'),
-        actions: [
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Logout'),
-        ],
-      ),
-  body: buildBody(),
+      body: buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) {
@@ -339,7 +327,7 @@ class _HomeTabState extends State<_HomeTab> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (icon != null) Icon(icon, size: 16, color: color.withValues(alpha: 0.9)),
+                  if (icon != null) Icon(icon, size: 16, color: color.withOpacity(0.9)),
                   if (icon != null) const SizedBox(width: 6),
                   Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w600)),
                 ],
@@ -580,79 +568,85 @@ class _HomeTabState extends State<_HomeTab> {
         constraints: const BoxConstraints(maxWidth: 520),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+          child: RefreshIndicator(
+            onRefresh: _loadToday,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Hari ini', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Muat ulang',
-                    onPressed: _loading ? null : _loadToday,
-                    icon: const Icon(Icons.refresh),
+                  Row(
+                    children: [
+                      const Text('Hari ini', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Muat ulang',
+                        onPressed: _loading ? null : _loadToday,
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ],
                   ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    ),
+                  Row(
+                    children: [
+                      _kpiCard(title: 'Hadir', count: _hadir, color: Colors.green.shade700, icon: Icons.check_circle),
+                      const SizedBox(width: 8),
+                      _kpiCard(title: 'Telat', count: _telat, color: Colors.orange.shade800, icon: Icons.schedule),
+                      const SizedBox(width: 8),
+                      _kpiCard(title: 'Absen', count: _absen, color: Colors.red.shade700, icon: Icons.cancel),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.calendar_month, size: 18),
+                        label: const Text('Laporan Harian'),
+                        onPressed: () => Navigator.pushNamed(context, '/admin-report-day'),
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.fact_check, size: 18),
+                        label: const Text('Rollcall Hari Ini'),
+                        onPressed: () {
+                          final w = DateTime.now().toUtc().add(const Duration(hours: 7));
+                          final d = DateTime(w.year, w.month, w.day);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => AdminDayReportDetailScreen(date: d)),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Ringkasan cepat di bawah chips (minimalis)
+                  if (_telat > 0) _sectionTitle('Telat ($_telat)'),
+                  if (_telat > 0)
+                    _miniList(
+                      items: _lateItems,
+                      icon: Icons.schedule,
+                      iconColor: Colors.orange.shade800,
+                      showTime: true,
+                    ),
+                  if (displayedMissing.isNotEmpty) _sectionTitle(_absen > 0 ? 'Absen ($_absen)' : 'Belum Check-in'),
+                  if (displayedMissing.isNotEmpty)
+                    _miniList(
+                      items: displayedMissing,
+                      icon: _absen > 0 ? Icons.cancel : Icons.remove_circle_outline,
+                      iconColor: _absen > 0 ? Colors.red.shade700 : Colors.grey.shade700,
+                    ),
+                  if (_loading) ...[
+                    const SizedBox(height: 24),
+                    const Center(child: CircularProgressIndicator()),
+                  ],
                 ],
               ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                ),
-              Row(
-                children: [
-                  _kpiCard(title: 'Hadir', count: _hadir, color: Colors.green.shade700, icon: Icons.check_circle),
-                  const SizedBox(width: 8),
-                  _kpiCard(title: 'Telat', count: _telat, color: Colors.orange.shade800, icon: Icons.schedule),
-                  const SizedBox(width: 8),
-                  _kpiCard(title: 'Absen', count: _absen, color: Colors.red.shade700, icon: Icons.cancel),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.calendar_month, size: 18),
-                    label: const Text('Laporan Harian'),
-                    onPressed: () => Navigator.pushNamed(context, '/admin-report-day'),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.fact_check, size: 18),
-                    label: const Text('Rollcall Hari Ini'),
-                    onPressed: () {
-                      final w = DateTime.now().toUtc().add(const Duration(hours: 7));
-                      final d = DateTime(w.year, w.month, w.day);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => AdminDayReportDetailScreen(date: d)),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Ringkasan cepat di bawah chips (minimalis)
-              if (_telat > 0) _sectionTitle('Telat ($_telat)'),
-              if (_telat > 0)
-                _miniList(
-                  items: _lateItems,
-                  icon: Icons.schedule,
-                  iconColor: Colors.orange.shade800,
-                  showTime: true,
-                ),
-              if (displayedMissing.isNotEmpty) _sectionTitle(_absen > 0 ? 'Absen ($_absen)' : 'Belum Check-in'),
-              if (displayedMissing.isNotEmpty)
-                _miniList(
-                  items: displayedMissing,
-                  icon: _absen > 0 ? Icons.cancel : Icons.remove_circle_outline,
-                  iconColor: _absen > 0 ? Colors.red.shade700 : Colors.grey.shade700,
-                ),
-              if (_loading) ...[
-                const SizedBox(height: 24),
-                const Center(child: CircularProgressIndicator()),
-              ],
-            ],
+            ),
           ),
         ),
       ),
