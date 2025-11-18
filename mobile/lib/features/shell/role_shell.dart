@@ -101,6 +101,7 @@ class _HomeTabState extends State<_HomeTab> {
   List<Map<String, dynamic>> _recentLogs = [];
   int _monthPresent = 0;
   int _monthLate = 0;
+  int _monthAbsent = 0;
   Timer? _ticker;
 
   @override
@@ -163,6 +164,7 @@ class _HomeTabState extends State<_HomeTab> {
         _recentLogs = List<Map<String, dynamic>>.from(data['recent'] ?? []);
         _monthPresent = data['monthPresent'] ?? 0;
         _monthLate = data['monthLate'] ?? 0;
+        _monthAbsent = data['monthAbsent'] ?? 0;
         _myLoading = false;
       });
     } catch (e) {
@@ -433,12 +435,19 @@ class _HomeTabState extends State<_HomeTab> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _miniStatCard(title: 'Hadir bln ini', value: _monthPresent, color: Colors.indigo, context: context),
-                      const SizedBox(width: 8),
-                      _miniStatCard(title: 'Telat bln ini', value: _monthLate, color: Colors.orange.shade800, context: context),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cardWidth = (constraints.maxWidth - 16) / 3; // 16 for spacing
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          SizedBox(width: cardWidth, child: _miniStatCard(title: 'Hadir bln ini', value: _monthPresent, color: Colors.indigo, context: context)),
+                          SizedBox(width: cardWidth, child: _miniStatCard(title: 'Telat bln ini', value: _monthLate, color: Colors.orange.shade800, context: context)),
+                          SizedBox(width: cardWidth, child: _miniStatCard(title: 'Absen bln ini', value: _monthAbsent, color: Colors.red.shade700, context: context)),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   _progressRing(context),

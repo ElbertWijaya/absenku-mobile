@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, IsNull, Repository } from 'typeorm';
+import { Between, IsNull, MoreThanOrEqual, Repository } from 'typeorm';
 import { AttendanceLog } from '../../entities/attendance-log.entity';
 import { User } from '../../entities/user.entity';
 import { Role } from '../../entities/role.entity';
@@ -46,14 +46,12 @@ export class AttendanceService {
   // Convert a Date (server local) to WIB components and strings
   private getNowWIB() {
     const now = new Date();
-    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-    const wibMs = utcMs + 7 * 3600000; // UTC+7
-    const d = new Date(wibMs);
-    const y = d.getUTCFullYear();
-    const m = d.getUTCMonth() + 1;
-    const day = d.getUTCDate();
+    // Get local time components directly (server's local time is treated as WIB)
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const day = now.getDate();
     const dateStr = `${y}-${this.pad2(m)}-${this.pad2(day)}`;
-    return { now, utcMs: now.getTime(), wibDate: d, y, m, day, dateStr };
+    return { now, utcMs: now.getTime(), wibDate: now, y, m, day, dateStr };
   }
 
   // Build an absolute UTC ms timestamp for a WIB wall-clock time on a given WIB date
@@ -68,6 +66,7 @@ export class AttendanceService {
     const { qr_token } = body ?? {};
     if (!qr_token) throw new BadRequestException('qr_token is required');
     const { now, utcMs, y, m, day, dateStr } = this.getNowWIB();
+    console.log(`[CHECKIN DEBUG] Server WIB date: ${dateStr}, UTC ms: ${utcMs}, userId: ${userId}`);
     // Load user with employee relation
     const user = await this.usersRepo.findOne({ where: { id: userId }, relations: ['employee'] });
     if (!user) throw new UnauthorizedException('User not found');
@@ -75,10 +74,12 @@ export class AttendanceService {
     // Validate qr_token
     try {
       const payload: any = this.jwt.verify(qr_token);
+      console.log(`[CHECKIN DEBUG] QR payload: ${JSON.stringify(payload)}`);
       if (payload?.typ !== 'qr') throw new UnauthorizedException('Invalid token');
       // ensure token's work_date matches today
       if (payload?.wd) {
         const todayStr = dateStr;
+        console.log(`[CHECKIN DEBUG] Comparing QR wd: ${payload.wd} vs server today: ${todayStr}`);
         if (payload.wd !== todayStr) throw new UnauthorizedException('QR expired for today');
       }
       // Extract location from token if provided (supports loc or location_id keys)
@@ -87,6 +88,7 @@ export class AttendanceService {
         (body as any)._location_id_from_token = fromToken;
       }
     } catch (e) {
+      console.log(`[CHECKIN DEBUG] QR validation error: ${e.message}`);
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('QR invalid or expired');
     }
@@ -158,27 +160,84 @@ export class AttendanceService {
   }
 
   async myToday(userId: string) {
-    const { dateStr } = this.getNowWIB();
+    const { now, y, m, day, dateStr } = this.getNowWIB();
+
+    // Today's log
     const log = await this.logsRepo.findOne({
       where: { user_id: userId, work_date: dateStr },
       order: { id: 'DESC' },
     });
-    if (log) {
-      return {
-        id: log.id,
-        user_id: log.user_id,
-        employee_id: log.employee_id,
-        work_date: log.work_date,
-        location_id: log.location_id,
-        check_in_at: log.check_in_at,
-        check_out_at: log.check_out_at,
-        late_minutes: log.late_minutes,
-        work_minutes: log.work_minutes,
-        status: log.status,
-      };
-    } else {
-      return {};
+    const today = log ? {
+      id: log.id,
+      user_id: log.user_id,
+      employee_id: log.employee_id,
+      work_date: log.work_date,
+      location_id: log.location_id,
+      check_in_at: log.check_in_at,
+      check_out_at: log.check_out_at,
+      late_minutes: log.late_minutes,
+      work_minutes: log.work_minutes,
+      status: log.status,
+    } : null;
+
+    // Recent logs: last 14 days
+    const fourteenDaysAgo = new Date(now);
+    fourteenDaysAgo.setDate(now.getDate() - 14);
+    const recent = await this.logsRepo.find({
+      where: { user_id: userId, work_date: MoreThanOrEqual(fourteenDaysAgo.toISOString().split('T')[0]) },
+      order: { work_date: 'DESC', id: 'DESC' },
+    });
+
+    // Monthly stats
+    const start = `${y}-${this.pad2(m)}-01`;
+    const endDate = new Date(y, m, 0); // last day of month
+    const end = `${y}-${this.pad2(m)}-${this.pad2(endDate.getDate())}`;
+
+    // Workdays so far: weekdays from 1 to day
+    let target = 0;
+    for (let d = 1; d <= day; d++) {
+      const wd = new Date(y, m - 1, d).getDay();
+      if (wd !== 0 && wd !== 6) target++; // not Sunday and Saturday
     }
+
+    // Present: distinct work_date with status 'on_time'
+    const presentQuery = this.logsRepo.createQueryBuilder('log')
+      .select('COUNT(DISTINCT log.work_date)', 'count')
+      .where('log.user_id = :userId', { userId })
+      .andWhere('log.work_date BETWEEN :start AND :end', { start, end })
+      .andWhere('log.status = :status', { status: 'on_time' });
+    const presentResult = await presentQuery.getRawOne();
+    const monthPresent = Number(presentResult?.count ?? 0);
+
+    // Late
+    const lateQuery = this.logsRepo.createQueryBuilder('log')
+      .select('COUNT(DISTINCT log.work_date)', 'count')
+      .where('log.user_id = :userId', { userId })
+      .andWhere('log.work_date BETWEEN :start AND :end', { start, end })
+      .andWhere('log.status = :status', { status: 'late' });
+    const lateResult = await lateQuery.getRawOne();
+    const monthLate = Number(lateResult?.count ?? 0);
+
+    const monthAbsent = target - monthPresent - monthLate;
+
+    return {
+      today,
+      recent: recent.map(r => ({
+        id: r.id,
+        user_id: r.user_id,
+        employee_id: r.employee_id,
+        work_date: r.work_date,
+        location_id: r.location_id,
+        check_in_at: r.check_in_at,
+        check_out_at: r.check_out_at,
+        late_minutes: r.late_minutes,
+        work_minutes: r.work_minutes,
+        status: r.status,
+      })),
+      monthPresent,
+      monthLate,
+      monthAbsent,
+    };
   }
 
   async reportByDay(date: string) {
