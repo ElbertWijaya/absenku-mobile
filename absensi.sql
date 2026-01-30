@@ -16,12 +16,10 @@
 
 
 -- Dumping database structure for absensi_db
-DROP DATABASE IF EXISTS `absensi_db`;
 CREATE DATABASE IF NOT EXISTS `absensi_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci */;
 USE `absensi_db`;
 
 -- Dumping structure for table absensi_db.attendance_logs
-DROP TABLE IF EXISTS `attendance_logs`;
 CREATE TABLE IF NOT EXISTS `attendance_logs` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `employee_id` bigint(20) unsigned DEFAULT NULL,
@@ -34,13 +32,13 @@ CREATE TABLE IF NOT EXISTS `attendance_logs` (
   `user_id` bigint(20) unsigned NOT NULL,
   `status` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=92 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=254 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Dumping data for table absensi_db.attendance_logs: ~91 rows (approximately)
+-- Dumping data for table absensi_db.attendance_logs: ~251 rows (approximately)
 DELETE FROM `attendance_logs`;
 INSERT INTO `attendance_logs` (`id`, `employee_id`, `work_date`, `location_id`, `check_in_at`, `check_out_at`, `work_minutes`, `late_minutes`, `user_id`, `status`) VALUES
-	(1, NULL, '2025-10-10', 1, '2025-10-10 07:50:08', NULL, NULL, 0, 2, 'on_time'),
-	(2, NULL, '2025-10-10', 1, '2025-10-10 07:50:09', NULL, NULL, 0, 2, 'on_time'),
+	(1, NULL, '2025-10-10', 1, '2025-10-10 07:50:08', '2025-11-17 17:34:06', 55304, 0, 2, 'on_time'),
+	(2, NULL, '2025-10-10', 1, '2025-10-10 07:50:09', '2025-11-17 17:34:04', 55304, 0, 2, 'on_time'),
 	(3, NULL, '2025-10-20', 1, '2025-10-20 04:18:47', '2025-10-20 05:45:42', 87, 123, 2, 'late'),
 	(4, NULL, '2025-10-20', 1, '2025-10-20 04:24:17', '2025-10-20 04:51:00', 27, 129, 3, 'late'),
 	(5, NULL, '2025-10-20', 1, '2025-10-20 05:25:17', NULL, NULL, 190, 5, 'late'),
@@ -129,10 +127,171 @@ INSERT INTO `attendance_logs` (`id`, `employee_id`, `work_date`, `location_id`, 
 	(88, 11, '2025-10-12', 1, '2025-10-12 01:54:47', '2025-10-12 10:20:47', 506, 0, 11, 'on_time'),
 	(89, 12, '2025-10-12', 1, '2025-10-12 01:53:12', '2025-10-12 10:45:12', 532, 0, 12, 'on_time'),
 	(90, 13, '2025-10-12', 3, '2025-10-12 01:46:46', '2025-10-12 09:04:46', 438, 0, 13, 'on_time'),
-	(91, 15, '2025-10-12', 2, '2025-10-12 02:00:27', '2025-10-12 10:25:27', 505, 0, 15, 'on_time');
+	(91, 15, '2025-10-12', 2, '2025-10-12 02:00:27', '2025-10-12 10:25:27', 505, 0, 15, 'on_time'),
+	(92, 7, '2025-11-17', 3, '2025-11-17 01:56:10', '2025-11-17 09:07:10', 431, 0, 7, 'on_time'),
+	(93, 12, '2025-11-17', 1, '2025-11-17 02:28:01', '2025-11-17 09:38:01', 430, 28, 12, 'late'),
+	(94, 14, '2025-11-17', 2, '2025-11-17 02:17:45', '2025-11-17 10:19:45', 482, 18, 14, 'late'),
+	(95, 15, '2025-11-17', 2, '2025-11-17 01:50:20', '2025-11-17 09:22:20', 452, 0, 15, 'on_time'),
+	(96, 16, '2025-11-17', 3, '2025-11-17 02:23:02', '2025-11-17 10:55:02', 512, 23, 16, 'late'),
+	(97, 17, '2025-11-17', 2, '2025-11-17 02:37:40', '2025-11-17 10:46:40', 489, 38, 17, 'late'),
+	(98, 18, '2025-11-17', 2, '2025-11-17 01:49:53', '2025-11-17 09:32:53', 463, 0, 18, 'on_time'),
+	(99, 19, '2025-11-17', 3, '2025-11-17 02:18:22', '2025-11-17 10:38:22', 500, 18, 19, 'late'),
+	(100, 22, '2025-11-17', 2, '2025-11-17 01:38:45', '2025-11-17 08:51:45', 433, 0, 22, 'on_time'),
+	(101, 6, '2025-11-16', 2, '2025-11-16 02:22:16', '2025-11-16 10:43:16', 501, 22, 6, 'late'),
+	(102, 7, '2025-11-16', 3, '2025-11-16 01:40:40', '2025-11-16 09:31:40', 471, 0, 7, 'on_time'),
+	(103, 8, '2025-11-16', 3, '2025-11-16 01:53:18', NULL, NULL, 0, 8, 'on_time'),
+	(104, 10, '2025-11-16', 1, '2025-11-16 01:43:48', '2025-11-16 09:51:48', 488, 0, 10, 'on_time'),
+	(105, 13, '2025-11-16', 3, '2025-11-16 01:50:53', '2025-11-16 09:36:53', 466, 0, 13, 'on_time'),
+	(106, 14, '2025-11-16', 2, '2025-11-16 01:39:51', '2025-11-16 08:53:51', 434, 0, 14, 'on_time'),
+	(107, 17, '2025-11-16', 2, '2025-11-16 01:50:50', '2025-11-16 10:49:50', 539, 0, 17, 'on_time'),
+	(108, 18, '2025-11-16', 2, '2025-11-16 01:58:51', '2025-11-16 09:49:51', 471, 0, 18, 'on_time'),
+	(109, 20, '2025-11-16', 2, '2025-11-16 02:24:03', '2025-11-16 09:29:03', 425, 24, 20, 'late'),
+	(110, 21, '2025-11-16', 1, '2025-11-16 01:50:29', '2025-11-16 10:39:29', 529, 0, 21, 'on_time'),
+	(111, 22, '2025-11-16', 2, '2025-11-16 01:53:41', '2025-11-16 10:32:41', 519, 0, 22, 'on_time'),
+	(112, 23, '2025-11-16', 1, '2025-11-16 02:03:17', '2025-11-16 09:38:17', 455, 0, 23, 'on_time'),
+	(113, 24, '2025-11-16', 3, '2025-11-16 02:11:29', '2025-11-16 09:48:29', 457, 0, 24, 'on_time'),
+	(114, 8, '2025-11-15', 3, '2025-11-15 01:46:26', '2025-11-15 09:19:26', 453, 0, 8, 'on_time'),
+	(115, 11, '2025-11-15', 1, '2025-11-15 02:06:55', '2025-11-15 10:52:55', 526, 0, 11, 'on_time'),
+	(116, 16, '2025-11-15', 3, '2025-11-15 02:42:32', '2025-11-15 10:40:32', 478, 43, 16, 'late'),
+	(117, 19, '2025-11-15', 3, '2025-11-15 02:01:19', '2025-11-15 09:33:19', 452, 0, 19, 'on_time'),
+	(118, 24, '2025-11-15', 3, '2025-11-15 02:40:34', '2025-11-15 11:22:34', 522, 41, 24, 'late'),
+	(119, 25, '2025-11-15', 1, '2025-11-15 01:32:43', '2025-11-15 09:21:43', 469, 0, 25, 'on_time'),
+	(120, 9, '2025-11-14', 3, '2025-11-14 02:30:12', NULL, NULL, 30, 9, 'late'),
+	(121, 14, '2025-11-14', 2, '2025-11-14 01:42:56', NULL, NULL, 0, 14, 'on_time'),
+	(122, 16, '2025-11-14', 3, '2025-11-14 02:34:32', '2025-11-14 10:20:32', 466, 35, 16, 'late'),
+	(123, 17, '2025-11-14', 2, '2025-11-14 02:25:27', '2025-11-14 09:55:27', 450, 25, 17, 'late'),
+	(124, 18, '2025-11-14', 2, '2025-11-14 02:38:21', NULL, NULL, 38, 18, 'late'),
+	(125, 20, '2025-11-14', 2, '2025-11-14 02:23:17', '2025-11-14 09:28:17', 425, 23, 20, 'late'),
+	(126, 21, '2025-11-14', 1, '2025-11-14 02:06:55', '2025-11-14 10:35:55', 509, 0, 21, 'on_time'),
+	(127, 22, '2025-11-14', 2, '2025-11-14 01:31:45', NULL, NULL, 0, 22, 'on_time'),
+	(128, 25, '2025-11-14', 1, '2025-11-14 01:44:06', '2025-11-14 10:06:06', 502, 0, 25, 'on_time'),
+	(129, 8, '2025-11-13', 3, '2025-11-13 02:14:02', '2025-11-13 10:09:02', 475, 0, 8, 'on_time'),
+	(130, 10, '2025-11-13', 1, '2025-11-13 01:36:35', '2025-11-13 09:47:35', 491, 0, 10, 'on_time'),
+	(131, 11, '2025-11-13', 1, '2025-11-13 01:50:21', '2025-11-13 10:10:21', 500, 0, 11, 'on_time'),
+	(132, 12, '2025-11-13', 1, '2025-11-13 02:41:34', '2025-11-13 10:15:34', 454, 42, 12, 'late'),
+	(133, 14, '2025-11-13', 2, '2025-11-13 02:31:46', '2025-11-13 10:44:46', 493, 32, 14, 'late'),
+	(134, 15, '2025-11-13', 2, '2025-11-13 01:39:15', '2025-11-13 09:23:15', 464, 0, 15, 'on_time'),
+	(135, 18, '2025-11-13', 2, '2025-11-13 02:12:11', '2025-11-13 10:52:11', 520, 0, 18, 'on_time'),
+	(136, 22, '2025-11-13', 2, '2025-11-13 01:46:02', '2025-11-13 09:52:02', 486, 0, 22, 'on_time'),
+	(137, 24, '2025-11-13', 3, '2025-11-13 01:35:56', '2025-11-13 10:22:56', 527, 0, 24, 'on_time'),
+	(138, 10, '2025-11-12', 1, '2025-11-12 01:30:05', '2025-11-12 08:35:05', 425, 0, 10, 'on_time'),
+	(139, 11, '2025-11-12', 1, '2025-11-12 01:39:29', '2025-11-12 09:50:29', 491, 0, 11, 'on_time'),
+	(140, 12, '2025-11-12', 1, '2025-11-12 02:10:40', '2025-11-12 09:15:40', 425, 0, 12, 'on_time'),
+	(141, 13, '2025-11-12', 3, '2025-11-12 01:53:32', '2025-11-12 09:34:32', 461, 0, 13, 'on_time'),
+	(142, 15, '2025-11-12', 2, '2025-11-12 02:36:22', '2025-11-12 10:30:22', 474, 36, 15, 'late'),
+	(143, 16, '2025-11-12', 3, '2025-11-12 01:40:15', '2025-11-12 09:10:15', 450, 0, 16, 'on_time'),
+	(144, 17, '2025-11-12', 2, '2025-11-12 02:16:34', '2025-11-12 10:57:34', 521, 17, 17, 'late'),
+	(145, 18, '2025-11-12', 2, '2025-11-12 01:41:28', '2025-11-12 10:11:28', 510, 0, 18, 'on_time'),
+	(146, 20, '2025-11-12', 2, '2025-11-12 01:46:19', '2025-11-12 08:55:19', 429, 0, 20, 'on_time'),
+	(147, 24, '2025-11-12', 3, '2025-11-12 01:40:07', '2025-11-12 08:58:07', 438, 0, 24, 'on_time'),
+	(148, 6, '2025-11-11', 2, '2025-11-11 02:35:36', NULL, NULL, 36, 6, 'late'),
+	(149, 11, '2025-11-11', 1, '2025-11-11 02:21:56', '2025-11-11 11:12:56', 531, 22, 11, 'late'),
+	(150, 12, '2025-11-11', 1, '2025-11-11 02:31:12', '2025-11-11 10:07:12', 456, 31, 12, 'late'),
+	(151, 16, '2025-11-11', 3, '2025-11-11 01:58:47', '2025-11-11 09:42:47', 464, 0, 16, 'on_time'),
+	(152, 23, '2025-11-11', 1, '2025-11-11 02:31:06', '2025-11-11 10:52:06', 501, 31, 23, 'late'),
+	(153, 24, '2025-11-11', 3, '2025-11-11 02:27:15', '2025-11-11 09:46:15', 439, 27, 24, 'late'),
+	(154, 7, '2025-11-10', 3, '2025-11-10 02:22:36', '2025-11-10 10:18:36', 476, 23, 7, 'late'),
+	(155, 10, '2025-11-10', 1, '2025-11-10 02:03:28', '2025-11-10 09:42:28', 459, 0, 10, 'on_time'),
+	(156, 12, '2025-11-10', 1, '2025-11-10 01:44:22', NULL, NULL, 0, 12, 'on_time'),
+	(157, 14, '2025-11-10', 2, '2025-11-10 01:58:37', '2025-11-10 09:06:37', 428, 0, 14, 'on_time'),
+	(158, 18, '2025-11-10', 2, '2025-11-10 02:40:53', NULL, NULL, 41, 18, 'late'),
+	(159, 20, '2025-11-10', 2, '2025-11-10 01:44:44', NULL, NULL, 0, 20, 'on_time'),
+	(160, 21, '2025-11-10', 1, '2025-11-10 01:45:49', '2025-11-10 09:22:49', 457, 0, 21, 'on_time'),
+	(161, 22, '2025-11-10', 2, '2025-11-10 02:28:28', '2025-11-10 11:17:28', 529, 28, 22, 'late'),
+	(162, 9, '2025-11-09', 3, '2025-11-09 02:38:15', '2025-11-09 09:40:15', 422, 38, 9, 'late'),
+	(163, 10, '2025-11-09', 1, '2025-11-09 02:18:31', '2025-11-09 09:49:31', 451, 19, 10, 'late'),
+	(164, 12, '2025-11-09', 1, '2025-11-09 02:12:50', '2025-11-09 09:49:50', 457, 0, 12, 'on_time'),
+	(165, 15, '2025-11-09', 2, '2025-11-09 01:47:02', '2025-11-09 09:46:02', 479, 0, 15, 'on_time'),
+	(166, 17, '2025-11-09', 2, '2025-11-09 01:52:38', '2025-11-09 09:20:38', 448, 0, 17, 'on_time'),
+	(167, 19, '2025-11-09', 3, '2025-11-09 01:30:53', '2025-11-09 08:36:53', 426, 0, 19, 'on_time'),
+	(168, 20, '2025-11-09', 2, '2025-11-09 02:15:05', '2025-11-09 10:19:05', 484, 15, 20, 'late'),
+	(169, 23, '2025-11-09', 1, '2025-11-09 02:25:35', NULL, NULL, 26, 23, 'late'),
+	(170, 25, '2025-11-09', 1, '2025-11-09 01:32:38', NULL, NULL, 0, 25, 'on_time'),
+	(171, 6, '2025-11-08', 2, '2025-11-08 01:38:03', '2025-11-08 10:37:03', 539, 0, 6, 'on_time'),
+	(172, 6, '2025-11-18', 2, '2025-11-18 02:01:49', '2025-11-18 10:07:49', 486, 0, 6, 'on_time'),
+	(173, 12, '2025-11-18', 1, '2025-11-18 01:43:46', NULL, NULL, 0, 12, 'on_time'),
+	(174, 13, '2025-11-18', 3, '2025-11-18 01:48:57', NULL, NULL, 0, 13, 'on_time'),
+	(175, 14, '2025-11-18', 2, '2025-11-18 02:32:22', '2025-11-18 10:31:22', 479, 32, 14, 'late'),
+	(176, 17, '2025-11-18', 2, '2025-11-18 01:41:04', '2025-11-18 09:48:04', 487, 0, 17, 'on_time'),
+	(177, 19, '2025-11-18', 3, '2025-11-18 01:44:20', '2025-11-18 08:46:20', 422, 0, 19, 'on_time'),
+	(178, 21, '2025-11-18', 1, '2025-11-18 01:50:15', '2025-11-18 10:05:15', 495, 0, 21, 'on_time'),
+	(179, 23, '2025-11-18', 1, '2025-11-18 02:26:00', '2025-11-18 11:25:00', 539, 26, 23, 'late'),
+	(180, 25, '2025-11-18', 1, '2025-11-18 02:19:39', NULL, NULL, 20, 25, 'late'),
+	(181, 8, '2025-11-17', 3, '2025-11-17 01:30:06', '2025-11-17 09:48:06', 498, 0, 8, 'on_time'),
+	(182, 9, '2025-11-17', 3, '2025-11-17 01:54:12', NULL, NULL, 0, 9, 'on_time'),
+	(183, 13, '2025-11-17', 3, '2025-11-17 01:55:56', '2025-11-17 09:53:56', 478, 0, 13, 'on_time'),
+	(184, 21, '2025-11-17', 1, '2025-11-17 01:42:24', '2025-11-17 09:54:24', 492, 0, 21, 'on_time'),
+	(185, 24, '2025-11-17', 3, '2025-11-17 01:58:49', '2025-11-17 09:58:49', 480, 0, 24, 'on_time'),
+	(186, 25, '2025-11-17', 1, '2025-11-17 02:12:13', '2025-11-17 10:16:13', 484, 0, 25, 'on_time'),
+	(187, 11, '2025-11-16', 1, '2025-11-16 01:30:07', NULL, NULL, 0, 11, 'on_time'),
+	(188, 12, '2025-11-16', 1, '2025-11-16 01:40:48', '2025-11-16 10:07:48', 507, 0, 12, 'on_time'),
+	(189, 15, '2025-11-16', 2, '2025-11-16 02:02:19', '2025-11-16 09:58:19', 476, 0, 15, 'on_time'),
+	(190, 16, '2025-11-16', 3, '2025-11-16 02:08:53', '2025-11-16 09:55:53', 467, 0, 16, 'on_time'),
+	(191, 25, '2025-11-16', 1, '2025-11-16 02:25:41', '2025-11-16 11:07:41', 522, 26, 25, 'late'),
+	(192, 6, '2025-11-15', 2, '2025-11-15 01:31:03', '2025-11-15 08:36:03', 425, 0, 6, 'on_time'),
+	(193, 7, '2025-11-15', 3, '2025-11-15 01:43:41', NULL, NULL, 0, 7, 'on_time'),
+	(194, 9, '2025-11-15', 3, '2025-11-15 02:36:59', '2025-11-15 10:24:59', 468, 37, 9, 'late'),
+	(195, 13, '2025-11-15', 3, '2025-11-15 02:07:48', '2025-11-15 10:01:48', 474, 0, 13, 'on_time'),
+	(196, 14, '2025-11-15', 2, '2025-11-15 01:53:40', '2025-11-15 10:08:40', 495, 0, 14, 'on_time'),
+	(197, 17, '2025-11-15', 2, '2025-11-15 02:07:47', '2025-11-15 11:06:47', 539, 0, 17, 'on_time'),
+	(198, 20, '2025-11-15', 2, '2025-11-15 02:05:00', '2025-11-15 09:20:00', 435, 0, 20, 'on_time'),
+	(199, 21, '2025-11-15', 1, '2025-11-15 01:32:37', '2025-11-15 10:20:37', 528, 0, 21, 'on_time'),
+	(200, 22, '2025-11-15', 2, '2025-11-15 02:07:15', '2025-11-15 09:45:15', 458, 0, 22, 'on_time'),
+	(201, 7, '2025-11-14', 3, '2025-11-14 02:34:57', '2025-11-14 10:24:57', 470, 35, 7, 'late'),
+	(202, 11, '2025-11-14', 1, '2025-11-14 01:45:26', NULL, NULL, 0, 11, 'on_time'),
+	(203, 15, '2025-11-14', 2, '2025-11-14 01:50:17', '2025-11-14 08:51:17', 421, 0, 15, 'on_time'),
+	(204, 9, '2025-11-13', 3, '2025-11-13 02:03:19', '2025-11-13 10:47:19', 524, 0, 9, 'on_time'),
+	(205, 16, '2025-11-13', 3, '2025-11-13 01:38:01', '2025-11-13 09:58:01', 500, 0, 16, 'on_time'),
+	(206, 19, '2025-11-13', 3, '2025-11-13 01:48:04', NULL, NULL, 0, 19, 'on_time'),
+	(207, 21, '2025-11-13', 1, '2025-11-13 02:44:51', '2025-11-13 10:14:51', 450, 45, 21, 'late'),
+	(208, 25, '2025-11-13', 1, '2025-11-13 02:19:37', '2025-11-13 10:52:37', 513, 20, 25, 'late'),
+	(209, 21, '2025-11-12', 1, '2025-11-12 02:14:29', '2025-11-12 10:19:29', 485, 0, 21, 'on_time'),
+	(210, 23, '2025-11-12', 1, '2025-11-12 01:49:27', '2025-11-12 09:35:27', 466, 0, 23, 'on_time'),
+	(211, 25, '2025-11-12', 1, '2025-11-12 02:39:52', '2025-11-12 09:41:52', 422, 40, 25, 'late'),
+	(212, 9, '2025-11-11', 3, '2025-11-11 02:08:03', '2025-11-11 09:31:03', 443, 0, 9, 'on_time'),
+	(213, 13, '2025-11-11', 3, '2025-11-11 01:36:22', '2025-11-11 09:43:22', 487, 0, 13, 'on_time'),
+	(214, 14, '2025-11-11', 2, '2025-11-11 02:29:55', '2025-11-11 09:35:55', 426, 30, 14, 'late'),
+	(215, 15, '2025-11-11', 2, '2025-11-11 02:34:10', NULL, NULL, 34, 15, 'late'),
+	(216, 17, '2025-11-11', 2, '2025-11-11 01:31:26', '2025-11-11 10:31:26', 540, 0, 17, 'on_time'),
+	(217, 18, '2025-11-11', 2, '2025-11-11 01:56:35', '2025-11-11 10:56:35', 540, 0, 18, 'on_time'),
+	(218, 8, '2025-11-10', 3, '2025-11-10 02:43:50', '2025-11-10 10:18:50', 455, 44, 8, 'late'),
+	(219, 9, '2025-11-10', 3, '2025-11-10 01:59:12', '2025-11-10 09:10:12', 431, 0, 9, 'on_time'),
+	(220, 11, '2025-11-10', 1, '2025-11-10 01:41:56', '2025-11-10 08:47:56', 426, 0, 11, 'on_time'),
+	(221, 15, '2025-11-10', 2, '2025-11-10 02:43:51', NULL, NULL, 44, 15, 'late'),
+	(222, 17, '2025-11-10', 2, '2025-11-10 01:57:55', '2025-11-10 10:02:55', 485, 0, 17, 'on_time'),
+	(223, 23, '2025-11-10', 1, '2025-11-10 01:50:11', '2025-11-10 09:40:11', 470, 0, 23, 'on_time'),
+	(224, 24, '2025-11-10', 3, '2025-11-10 01:31:56', NULL, NULL, 0, 24, 'on_time'),
+	(225, 25, '2025-11-10', 1, '2025-11-10 01:51:47', '2025-11-10 09:58:47', 487, 0, 25, 'on_time'),
+	(226, 7, '2025-11-09', 3, '2025-11-09 01:31:06', '2025-11-09 09:58:06', 507, 0, 7, 'on_time'),
+	(227, 8, '2025-11-09', 3, '2025-11-09 02:43:20', '2025-11-09 11:28:20', 525, 43, 8, 'late'),
+	(228, 18, '2025-11-09', 2, '2025-11-09 02:13:14', NULL, NULL, 0, 18, 'on_time'),
+	(229, 21, '2025-11-09', 1, '2025-11-09 01:37:01', '2025-11-09 08:40:01', 423, 0, 21, 'on_time'),
+	(230, 8, '2025-11-08', 3, '2025-11-08 01:49:56', NULL, NULL, 0, 8, 'on_time'),
+	(231, 10, '2025-11-08', 1, '2025-11-08 01:50:50', '2025-11-08 08:51:50', 421, 0, 10, 'on_time'),
+	(232, 11, '2025-11-08', 1, '2025-11-08 01:57:47', '2025-11-08 10:47:47', 530, 0, 11, 'on_time'),
+	(233, 12, '2025-11-08', 1, '2025-11-08 02:02:08', '2025-11-08 10:57:08', 535, 0, 12, 'on_time'),
+	(234, 14, '2025-11-08', 2, '2025-11-08 02:24:40', NULL, NULL, 25, 14, 'late'),
+	(235, 17, '2025-11-08', 2, '2025-11-08 01:59:48', '2025-11-08 10:06:48', 487, 0, 17, 'on_time'),
+	(236, 19, '2025-11-08', 3, '2025-11-08 01:36:45', '2025-11-08 08:46:45', 430, 0, 19, 'on_time'),
+	(237, 20, '2025-11-08', 2, '2025-11-08 01:32:21', '2025-11-08 08:40:21', 428, 0, 20, 'on_time'),
+	(238, 23, '2025-11-08', 1, '2025-11-08 01:57:35', '2025-11-08 10:25:35', 508, 0, 23, 'on_time'),
+	(239, 24, '2025-11-08', 3, '2025-11-08 02:44:53', '2025-11-08 11:19:53', 515, 45, 24, 'late'),
+	(240, 8, '2025-11-07', 3, '2025-11-07 02:14:03', '2025-11-07 09:28:03', 434, 0, 8, 'on_time'),
+	(241, 10, '2025-11-07', 1, '2025-11-07 02:36:30', '2025-11-07 11:12:30', 516, 37, 10, 'late'),
+	(242, 13, '2025-11-07', 3, '2025-11-07 01:49:06', NULL, NULL, 0, 13, 'on_time'),
+	(243, 18, '2025-11-07', 2, '2025-11-07 02:28:02', '2025-11-07 10:47:02', 499, 28, 18, 'late'),
+	(244, 19, '2025-11-07', 3, '2025-11-07 02:16:28', '2025-11-07 09:57:28', 461, 16, 19, 'late'),
+	(245, 22, '2025-11-07', 2, '2025-11-07 02:32:44', '2025-11-07 10:25:44', 473, 33, 22, 'late'),
+	(246, 24, '2025-11-07', 3, '2025-11-07 02:26:42', '2025-11-07 09:57:42', 451, 27, 24, 'late'),
+	(247, 6, '2025-11-06', 2, '2025-11-06 01:35:57', NULL, NULL, 0, 6, 'on_time'),
+	(248, 8, '2025-11-06', 3, '2025-11-06 02:11:51', '2025-11-06 09:29:51', 438, 0, 8, 'on_time'),
+	(249, 9, '2025-11-06', 3, '2025-11-06 02:42:53', '2025-11-06 10:15:53', 453, 43, 9, 'late'),
+	(250, 11, '2025-11-06', 1, '2025-11-06 01:32:20', '2025-11-06 10:05:20', 513, 0, 11, 'on_time'),
+	(251, 15, '2025-11-06', 2, '2025-11-06 01:47:31', NULL, NULL, 0, 15, 'on_time'),
+	(252, 2, '2025-11-18', 1, '2025-11-17 18:10:00', '2025-11-17 18:10:28', 0, 0, 2, 'on_time'),
+	(253, 3, '2025-11-18', 1, '2025-11-18 12:00:05', '2025-11-18 12:00:11', 0, 585, 3, 'late');
 
 -- Dumping structure for table absensi_db.audit_logs
-DROP TABLE IF EXISTS `audit_logs`;
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `actor_user_id` bigint(20) unsigned DEFAULT NULL,
@@ -150,7 +309,6 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 DELETE FROM `audit_logs`;
 
 -- Dumping structure for table absensi_db.employees
-DROP TABLE IF EXISTS `employees`;
 CREATE TABLE IF NOT EXISTS `employees` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `full_name` varchar(150) NOT NULL,
@@ -199,7 +357,6 @@ INSERT INTO `employees` (`id`, `full_name`, `role_title`, `gender`, `phone`, `ad
 	(25, 'Tono Sitohang', 'Staff', 'F', '08539724639', NULL, 'employee20@example.com', '1988-12-07', NULL, '2020-11-05', 1, 1, 5000000.00);
 
 -- Dumping structure for table absensi_db.holidays
-DROP TABLE IF EXISTS `holidays`;
 CREATE TABLE IF NOT EXISTS `holidays` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `date` date NOT NULL,
@@ -213,7 +370,6 @@ CREATE TABLE IF NOT EXISTS `holidays` (
 DELETE FROM `holidays`;
 
 -- Dumping structure for table absensi_db.leave_requests
-DROP TABLE IF EXISTS `leave_requests`;
 CREATE TABLE IF NOT EXISTS `leave_requests` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `employee_id` bigint(20) unsigned NOT NULL,
@@ -232,7 +388,6 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
 DELETE FROM `leave_requests`;
 
 -- Dumping structure for table absensi_db.locations
-DROP TABLE IF EXISTS `locations`;
 CREATE TABLE IF NOT EXISTS `locations` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(120) NOT NULL,
@@ -248,7 +403,6 @@ CREATE TABLE IF NOT EXISTS `locations` (
 DELETE FROM `locations`;
 
 -- Dumping structure for table absensi_db.migrations
-DROP TABLE IF EXISTS `migrations`;
 CREATE TABLE IF NOT EXISTS `migrations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timestamp` bigint(20) NOT NULL,
@@ -265,7 +419,6 @@ INSERT INTO `migrations` (`id`, `timestamp`, `name`) VALUES
 	(4, 1760774098606, 'Auto1760774098606');
 
 -- Dumping structure for table absensi_db.payroll_items
-DROP TABLE IF EXISTS `payroll_items`;
 CREATE TABLE IF NOT EXISTS `payroll_items` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `payroll_run_id` bigint(20) unsigned NOT NULL,
@@ -288,7 +441,6 @@ CREATE TABLE IF NOT EXISTS `payroll_items` (
 DELETE FROM `payroll_items`;
 
 -- Dumping structure for table absensi_db.payroll_runs
-DROP TABLE IF EXISTS `payroll_runs`;
 CREATE TABLE IF NOT EXISTS `payroll_runs` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `period_start` date NOT NULL,
@@ -302,7 +454,6 @@ CREATE TABLE IF NOT EXISTS `payroll_runs` (
 DELETE FROM `payroll_runs`;
 
 -- Dumping structure for table absensi_db.qr_codes
-DROP TABLE IF EXISTS `qr_codes`;
 CREATE TABLE IF NOT EXISTS `qr_codes` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `work_date` date NOT NULL,
@@ -311,9 +462,9 @@ CREATE TABLE IF NOT EXISTS `qr_codes` (
   `created_at` timestamp(6) NOT NULL DEFAULT current_timestamp(6),
   PRIMARY KEY (`id`),
   UNIQUE KEY `IDX_e8f6a36eaaabdf1f53ef44366e` (`work_date`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Dumping data for table absensi_db.qr_codes: ~8 rows (approximately)
+-- Dumping data for table absensi_db.qr_codes: ~16 rows (approximately)
 DELETE FROM `qr_codes`;
 INSERT INTO `qr_codes` (`id`, `work_date`, `token`, `valid_until`, `created_at`) VALUES
 	(1, '2025-10-11', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3ZCI6IjIwMjUtMTAtMTEiLCJ0eXAiOiJxciIsImlhdCI6MTc2MDE2NjczMiwiZXhwIjoxNzYwMjAxOTk5fQ.wMuSzrGBNm2bygJ38C76oKWTrZr29QNAs1gnVVHW3Fo', '2025-10-11 16:59:59', '2025-10-11 07:12:12.657268'),
@@ -323,10 +474,17 @@ INSERT INTO `qr_codes` (`id`, `work_date`, `token`, `valid_until`, `created_at`)
 	(5, '2025-10-19', 'dummy-token-2025-10-19-242664', '2025-10-19 16:59:59', '2025-10-20 09:23:29.593129'),
 	(6, '2025-10-18', 'dummy-token-2025-10-18-319985', '2025-10-18 16:59:59', '2025-10-20 09:23:29.595992'),
 	(7, '2025-10-16', 'dummy-token-2025-10-16-823866', '2025-10-16 16:59:59', '2025-10-20 09:23:29.599732'),
-	(8, '2025-10-15', 'dummy-token-2025-10-15-435238', '2025-10-15 16:59:59', '2025-10-20 09:23:29.603456');
+	(8, '2025-10-15', 'dummy-token-2025-10-15-435238', '2025-10-15 16:59:59', '2025-10-20 09:23:29.603456'),
+	(9, '2025-11-17', 'dummy-token-2025-11-17-839822', '2025-11-17 16:59:59', '2025-11-17 15:01:45.574816'),
+	(10, '2025-11-16', 'dummy-token-2025-11-16-957688', '2025-11-16 16:59:59', '2025-11-17 15:01:45.579152'),
+	(11, '2025-11-15', 'dummy-token-2025-11-15-341917', '2025-11-15 16:59:59', '2025-11-17 15:01:45.583045'),
+	(12, '2025-11-14', 'dummy-token-2025-11-14-298774', '2025-11-14 16:59:59', '2025-11-17 15:01:45.586864'),
+	(13, '2025-11-13', 'dummy-token-2025-11-13-910383', '2025-11-13 16:59:59', '2025-11-17 15:01:45.590820'),
+	(14, '2025-11-12', 'dummy-token-2025-11-12-320346', '2025-11-12 16:59:59', '2025-11-17 15:01:45.595251'),
+	(15, '2025-11-11', 'dummy-token-2025-11-11-449325', '2025-11-11 16:59:59', '2025-11-17 15:01:45.599149'),
+	(17, '2025-11-18', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3ZCI6IjIwMjUtMTEtMTgiLCJ0eXAiOiJxciIsImlhdCI6MTc2MzQ2NzA4NCwiZXhwIjoxNzYzNDg1MTk5fQ._6ZzUcHnJIAF0U71mr4Mi9m9sKBHX8MGPYmy9sOYOjo', '2025-11-18 16:59:59', '2025-11-18 11:58:04.378651');
 
 -- Dumping structure for table absensi_db.qr_tokens
-DROP TABLE IF EXISTS `qr_tokens`;
 CREATE TABLE IF NOT EXISTS `qr_tokens` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `location_id` int(10) unsigned DEFAULT NULL,
@@ -349,7 +507,6 @@ CREATE TABLE IF NOT EXISTS `qr_tokens` (
 DELETE FROM `qr_tokens`;
 
 -- Dumping structure for table absensi_db.roles
-DROP TABLE IF EXISTS `roles`;
 CREATE TABLE IF NOT EXISTS `roles` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
@@ -364,7 +521,6 @@ INSERT INTO `roles` (`id`, `name`) VALUES
 	(2, 'EMPLOYEE');
 
 -- Dumping structure for table absensi_db.schedules
-DROP TABLE IF EXISTS `schedules`;
 CREATE TABLE IF NOT EXISTS `schedules` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `employee_id` bigint(20) unsigned NOT NULL,
@@ -387,7 +543,6 @@ CREATE TABLE IF NOT EXISTS `schedules` (
 DELETE FROM `schedules`;
 
 -- Dumping structure for table absensi_db.shifts
-DROP TABLE IF EXISTS `shifts`;
 CREATE TABLE IF NOT EXISTS `shifts` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(80) NOT NULL,
@@ -403,7 +558,6 @@ CREATE TABLE IF NOT EXISTS `shifts` (
 DELETE FROM `shifts`;
 
 -- Dumping structure for table absensi_db.users
-DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `employee_id` bigint(20) unsigned DEFAULT NULL,
@@ -423,34 +577,33 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- Dumping data for table absensi_db.users: ~25 rows (approximately)
 DELETE FROM `users`;
 INSERT INTO `users` (`id`, `employee_id`, `email`, `username`, `password_hash`, `last_login_at`, `created_at`, `updated_at`) VALUES
-	(1, 1, 'admin@example.com', 'admin', '$2b$10$9roqm0Mcignq6usTqscHyebZiZDQKdRmMrgtvzJfhnWFaz6mI2AkW', NULL, '2025-10-07 06:41:16.000000', NULL),
-	(2, 2, 'elbert@example.com', 'Elbert', '$2b$10$W/8cuf6pAWFlMt6CxRZVaOJZHH1WiDcYcfgdgftOOc3lOj2ecphhO', NULL, '2025-10-08 12:49:49.989485', '2025-10-18 05:35:14.000000'),
-	(3, 3, 'fernando@example.com', 'Fernando', '$2b$10$W/8cuf6pAWFlMt6CxRZVaOJZHH1WiDcYcfgdgftOOc3lOj2ecphhO', NULL, '2025-10-08 12:49:50.005251', '2025-10-18 05:35:14.000000'),
-	(4, 4, 'thoro@example.com', 'Thoro', '$2b$10$W/8cuf6pAWFlMt6CxRZVaOJZHH1WiDcYcfgdgftOOc3lOj2ecphhO', NULL, '2025-10-08 12:49:50.011801', '2025-10-18 05:35:14.000000'),
-	(5, 5, 'howard@example.com', 'Howard', '$2b$10$W/8cuf6pAWFlMt6CxRZVaOJZHH1WiDcYcfgdgftOOc3lOj2ecphhO', NULL, '2025-10-08 12:49:50.019476', '2025-10-18 05:35:14.000000'),
-	(6, 6, 'employee1@example.com', 'employee1', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.098842', '2025-10-20 09:23:29.098842'),
-	(7, 7, 'employee2@example.com', 'employee2', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.111267', '2025-10-20 09:23:29.111267'),
-	(8, 8, 'employee3@example.com', 'employee3', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.127300', '2025-10-20 09:23:29.127300'),
-	(9, 9, 'employee4@example.com', 'employee4', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.138851', '2025-10-20 09:23:29.138851'),
-	(10, 10, 'employee5@example.com', 'employee5', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.153052', '2025-10-20 09:23:29.153052'),
-	(11, 11, 'employee6@example.com', 'employee6', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.165041', '2025-10-20 09:23:29.165041'),
-	(12, 12, 'employee7@example.com', 'employee7', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.176968', '2025-10-20 09:23:29.176968'),
-	(13, 13, 'employee8@example.com', 'employee8', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.188222', '2025-10-20 09:23:29.188222'),
-	(14, 14, 'employee9@example.com', 'employee9', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.199645', '2025-10-20 09:23:29.199645'),
-	(15, 15, 'employee10@example.com', 'employee10', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.210528', '2025-10-20 09:23:29.210528'),
-	(16, 16, 'employee11@example.com', 'employee11', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.222482', '2025-10-20 09:23:29.222482'),
-	(17, 17, 'employee12@example.com', 'employee12', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.233709', '2025-10-20 09:23:29.233709'),
-	(18, 18, 'employee13@example.com', 'employee13', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.243857', '2025-10-20 09:23:29.243857'),
-	(19, 19, 'employee14@example.com', 'employee14', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.257563', '2025-10-20 09:23:29.257563'),
-	(20, 20, 'employee15@example.com', 'employee15', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.268448', '2025-10-20 09:23:29.268448'),
-	(21, 21, 'employee16@example.com', 'employee16', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.277868', '2025-10-20 09:23:29.277868'),
-	(22, 22, 'employee17@example.com', 'employee17', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.288470', '2025-10-20 09:23:29.288470'),
-	(23, 23, 'employee18@example.com', 'employee18', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.298626', '2025-10-20 09:23:29.298626'),
-	(24, 24, 'employee19@example.com', 'employee19', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.307913', '2025-10-20 09:23:29.307913'),
-	(25, 25, 'employee20@example.com', 'employee20', '$2b$10$VSIyTYeVZqumtBmpSucZJO.RPEL9uXtGXT.z5Gn/Fok0ZIKr4fly.', NULL, '2025-10-20 09:23:29.317044', '2025-10-20 09:23:29.317044');
+	(1, 1, 'admin@example.com', 'admin', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-07 06:41:16.000000', '2025-11-17 16:07:00.310120'),
+	(2, 2, 'elbert@example.com', 'Elbert', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-08 12:49:49.989485', '2025-11-17 16:07:00.310120'),
+	(3, 3, 'fernando@example.com', 'Fernando', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-08 12:49:50.005251', '2025-11-17 16:07:00.310120'),
+	(4, 4, 'thoro@example.com', 'Thoro', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-08 12:49:50.011801', '2025-11-17 16:07:00.310120'),
+	(5, 5, 'howard@example.com', 'Howard', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-08 12:49:50.019476', '2025-11-17 16:07:00.310120'),
+	(6, 6, 'employee1@example.com', 'employee1', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.098842', '2025-11-17 16:07:00.310120'),
+	(7, 7, 'employee2@example.com', 'employee2', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.111267', '2025-11-17 16:07:00.310120'),
+	(8, 8, 'employee3@example.com', 'employee3', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.127300', '2025-11-17 16:07:00.310120'),
+	(9, 9, 'employee4@example.com', 'employee4', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.138851', '2025-11-17 16:07:00.310120'),
+	(10, 10, 'employee5@example.com', 'employee5', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.153052', '2025-11-17 16:07:00.310120'),
+	(11, 11, 'employee6@example.com', 'employee6', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.165041', '2025-11-17 16:07:00.310120'),
+	(12, 12, 'employee7@example.com', 'employee7', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.176968', '2025-11-17 16:07:00.310120'),
+	(13, 13, 'employee8@example.com', 'employee8', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.188222', '2025-11-17 16:07:00.310120'),
+	(14, 14, 'employee9@example.com', 'employee9', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.199645', '2025-11-17 16:07:00.310120'),
+	(15, 15, 'employee10@example.com', 'employee10', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.210528', '2025-11-17 16:07:00.310120'),
+	(16, 16, 'employee11@example.com', 'employee11', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.222482', '2025-11-17 16:07:00.310120'),
+	(17, 17, 'employee12@example.com', 'employee12', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.233709', '2025-11-17 16:07:00.310120'),
+	(18, 18, 'employee13@example.com', 'employee13', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.243857', '2025-11-17 16:07:00.310120'),
+	(19, 19, 'employee14@example.com', 'employee14', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.257563', '2025-11-17 16:07:00.310120'),
+	(20, 20, 'employee15@example.com', 'employee15', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.268448', '2025-11-17 16:07:00.310120'),
+	(21, 21, 'employee16@example.com', 'employee16', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.277868', '2025-11-17 16:07:00.310120'),
+	(22, 22, 'employee17@example.com', 'employee17', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.288470', '2025-11-17 16:07:00.310120'),
+	(23, 23, 'employee18@example.com', 'employee18', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.298626', '2025-11-17 16:07:00.310120'),
+	(24, 24, 'employee19@example.com', 'employee19', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.307913', '2025-11-17 16:07:00.310120'),
+	(25, 25, 'employee20@example.com', 'employee20', '$2b$10$4DkJciZBoYN9Jt/17JTB0uhVqxBo8HdbJQuEUBrQGmdvNsEkGNdja', NULL, '2025-10-20 09:23:29.317044', '2025-11-17 16:07:00.310120');
 
 -- Dumping structure for table absensi_db.user_roles
-DROP TABLE IF EXISTS `user_roles`;
 CREATE TABLE IF NOT EXISTS `user_roles` (
   `user_id` bigint(20) unsigned NOT NULL,
   `role_id` int(10) unsigned NOT NULL,
