@@ -22,6 +22,8 @@
     "db:audit-accounts": "ts-node --transpile-only -r reflect-metadata src/scripts/audit-accounts.ts",
     "db:fix-accounts": "ts-node --transpile-only -r reflect-metadata src/scripts/audit-accounts.ts --fix",
     "db:reset-admin": "ts-node --transpile-only -r reflect-metadata src/scripts/reset-admin-password.ts"
+    ,
+    "db:reset-all": "ts-node --transpile-only -r reflect-metadata src/scripts/reset-all-passwords.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.7",
